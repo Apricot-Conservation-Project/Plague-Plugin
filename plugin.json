@@ -1,7 +1,7 @@
 {
-  "name": "PlaguePlugin1",
-  "author": "Recessive",
+  "name": "Plague",
+  "author": "Recessive, ACP Contributors",
   "main": "main.PlagueMain",
-  "description": "Plague plugin. Don't copy.",
+  "description": "Plague plugin. Copied.",
   "version": 0.1
 }

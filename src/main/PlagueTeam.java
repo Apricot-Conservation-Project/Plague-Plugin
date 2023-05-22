@@ -3,7 +3,6 @@ package main;
 import mindustry.game.Team;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class PlagueTeam {
     protected Team team;
@@ -13,8 +12,7 @@ public class PlagueTeam {
     public CustomPlayer leader;
     public boolean locked = false;
 
-
-    public PlagueTeam(Team team){
+    public PlagueTeam(Team team) {
         this(team, null);
     }
 
@@ -23,12 +21,16 @@ public class PlagueTeam {
         this.leader = leader;
     }
 
-    public void addPlayer(CustomPlayer ply){
+    public void addPlayer(CustomPlayer ply) {
         players.add(ply);
     }
 
-    public void removePlayer(CustomPlayer ply) {players.remove(ply);}
+    public void removePlayer(CustomPlayer ply) {
+        players.remove(ply);
+    }
 
-    public boolean hasPlayer(CustomPlayer ply) {return players.contains(ply);}
+    public boolean hasPlayer(CustomPlayer ply) {
+        return players.contains(ply);
+    }
 
 }

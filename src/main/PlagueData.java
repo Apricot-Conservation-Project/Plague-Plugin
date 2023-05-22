@@ -3,47 +3,15 @@ package main;
 import arc.math.Mathf;
 import arc.struct.ObjectSet;
 import arc.struct.Seq;
-import mindustry.Vars;
 import mindustry.content.*;
-import mindustry.gen.Sounds;
-import mindustry.gen.Unit;
-import mindustry.maps.Maps;
 import mindustry.maps.filters.*;
 import mindustry.type.ItemStack;
 import mindustry.type.UnitType;
-import mindustry.type.Weapon;
 import mindustry.world.Block;
-import mindustry.world.blocks.environment.OreBlock;
 
 import java.util.*;
 
 public class PlagueData {
-
-    public static final List<PrestigeLevel> prestiges;
-    static{
-        prestiges = new ArrayList<>();
-        prestiges.add(new PrestigeLevel("Poly", UnitTypes.poly, 1));
-        prestiges.add(new PrestigeLevel("Alpha 1", UnitTypes.alpha, 4));
-        prestiges.add(new PrestigeLevel("Alpha 2", UnitTypes.alpha, 3));
-        prestiges.add(new PrestigeLevel("Alpha 3", UnitTypes.alpha, 2));
-        prestiges.add(new PrestigeLevel("Alpha 4", UnitTypes.alpha, 1));
-        prestiges.add(new PrestigeLevel("Beta 1", UnitTypes.beta, 4));
-        prestiges.add(new PrestigeLevel("Beta 2", UnitTypes.beta, 3));
-        prestiges.add(new PrestigeLevel("Beta 3", UnitTypes.beta, 2));
-        prestiges.add(new PrestigeLevel("Beta 4", UnitTypes.beta, 1));
-        prestiges.add(new PrestigeLevel("Gamma 1", UnitTypes.gamma, 4));
-        prestiges.add(new PrestigeLevel("Gamma 2", UnitTypes.gamma, 3));
-        prestiges.add(new PrestigeLevel("Gamma 3", UnitTypes.gamma, 2));
-        prestiges.add(new PrestigeLevel("Gamma 4", UnitTypes.gamma, 1));
-        prestiges.add(new PrestigeLevel("Mega 1", UnitTypes.mega, 4));
-        prestiges.add(new PrestigeLevel("Mega 2", UnitTypes.mega, 3));
-        prestiges.add(new PrestigeLevel("Mega 3", UnitTypes.mega, 2));
-        prestiges.add(new PrestigeLevel("Mega 4", UnitTypes.mega, 1));
-    }
-
-
-
-
     public static final Map<String, Float> itemValues;
     static {
         Map<String, Float> aMap = new HashMap<>();
@@ -75,9 +43,12 @@ public class PlagueData {
     public static final ObjectSet<Block> survivorBanned;
     static {
         survivorBanned = ObjectSet.with(Blocks.groundFactory, Blocks.navalFactory,
-                Blocks.logicDisplay, Blocks.largeLogicDisplay, Blocks.canvas, // Blocks.microProcessor, Blocks.logicProcessor, Blocks.hyperProcessor,
+                Blocks.logicDisplay, Blocks.largeLogicDisplay, Blocks.canvas, // Blocks.microProcessor,
+                                                                              // Blocks.logicProcessor,
+                                                                              // Blocks.hyperProcessor,
                 Blocks.multiplicativeReconstructor, Blocks.exponentialReconstructor, Blocks.tetrativeReconstructor,
-                Blocks.shipAssembler, Blocks.mechAssembler, Blocks.tankAssembler, Blocks.tankFabricator, Blocks.shipFabricator,
+                Blocks.shipAssembler, Blocks.mechAssembler, Blocks.tankAssembler, Blocks.tankFabricator,
+                Blocks.shipFabricator,
                 Blocks.mechFabricator, Blocks.tankRefabricator, Blocks.mechRefabricator, Blocks.shipRefabricator,
                 Blocks.primeRefabricator, Blocks.scathe);
     }
@@ -95,78 +66,95 @@ public class PlagueData {
                 Blocks.phaseWallLarge, Blocks.titaniumWall, Blocks.titaniumWallLarge, Blocks.copperWallLarge,
                 Blocks.copperWall, Blocks.door, Blocks.doorLarge, Blocks.plastaniumWall, Blocks.plastaniumWallLarge,
                 Blocks.logicDisplay, Blocks.largeLogicDisplay, Blocks.canvas,
-                Blocks.breach, Blocks.diffuse, Blocks.sublimate, Blocks.titan, Blocks.disperse, Blocks.afflict, Blocks.lustre,
+                Blocks.breach, Blocks.diffuse, Blocks.sublimate, Blocks.titan, Blocks.disperse, Blocks.afflict,
+                Blocks.lustre,
                 Blocks.scathe, Blocks.smite, Blocks.malign,
                 Blocks.turbineCondenser, Blocks.chemicalCombustionChamber, Blocks.fluxReactor,
                 Blocks.neoplasiaReactor); // Blocks.microProcessor, Blocks.logicProcessor, Blocks.hyperProcessor);
     }
 
     public static final ObjectSet<Block> plagueBannedPreWin;
-    static{
+    static {
         plagueBannedPreWin = ObjectSet.with(plagueBanned.toSeq());
         plagueBannedPreWin.addAll(Blocks.shipFabricator, Blocks.shipRefabricator, Blocks.shipAssembler);
     }
 
     public static final ObjectSet<GenerateFilter> erekirFilters;
-    static{
-        final int[] seedOffset = {(int) System.currentTimeMillis()};
-        OreFilter berylliumFloorFilter = new OreFilter() {{
-            ore = Blocks.oreBeryllium;
-            seed = seedOffset[0]++;
-        }};
+    static {
+        final int[] seedOffset = { (int) System.currentTimeMillis() };
+        OreFilter berylliumFloorFilter = new OreFilter() {
+            {
+                ore = Blocks.oreBeryllium;
+                seed = seedOffset[0]++;
+            }
+        };
 
-        OreFilter berylliumWallFilter = new OreFilter() {{
-            ore = Blocks.wallOreBeryllium;
-            seed = seedOffset[0]++;
-            threshold -= 0.1;
-        }};
+        OreFilter berylliumWallFilter = new OreFilter() {
+            {
+                ore = Blocks.wallOreBeryllium;
+                seed = seedOffset[0]++;
+                threshold -= 0.1;
+            }
+        };
 
-        OreFilter tungstenFloorFilter = new OreFilter() {{
-            ore = Blocks.oreTungsten;
-            seed = seedOffset[0]++;
-        }};
-        OreFilter tungstenWallFilter = new OreFilter() {{
-            ore = Blocks.wallOreTungsten;
-            seed = seedOffset[0]++;
-            threshold -= 0.1;
-        }};
+        OreFilter tungstenFloorFilter = new OreFilter() {
+            {
+                ore = Blocks.oreTungsten;
+                seed = seedOffset[0]++;
+            }
+        };
+        OreFilter tungstenWallFilter = new OreFilter() {
+            {
+                ore = Blocks.wallOreTungsten;
+                seed = seedOffset[0]++;
+                threshold -= 0.1;
+            }
+        };
 
-        OreFilter thoriumFloorFilter = new OreFilter() {{
-            ore = Blocks.oreCrystalThorium;
-            seed = seedOffset[0]++;
-        }};
-        OreFilter thoriumWallFilter = new OreFilter() {{
-            ore = Blocks.wallOreThorium;
-            seed = seedOffset[0]++;
-            threshold -= 0.1;
-        }};
+        OreFilter thoriumFloorFilter = new OreFilter() {
+            {
+                ore = Blocks.oreCrystalThorium;
+                seed = seedOffset[0]++;
+            }
+        };
+        OreFilter thoriumWallFilter = new OreFilter() {
+            {
+                ore = Blocks.wallOreThorium;
+                seed = seedOffset[0]++;
+                threshold -= 0.1;
+            }
+        };
 
-        OreFilter graphiteWallFilter = new OreFilter() {{
-            ore = Blocks.graphiticWall;
-            seed = seedOffset[0]++;
-            threshold -= 0.2;
-        }};
+        OreFilter graphiteWallFilter = new OreFilter() {
+            {
+                ore = Blocks.graphiticWall;
+                seed = seedOffset[0]++;
+                threshold -= 0.2;
+            }
+        };
 
-        OreFilter slagOreFilter = new OreFilter() {{
-            ore = Blocks.slag;
-            seed = seedOffset[0] ++;
-            threshold += 0.06;
-        }};
+        OreFilter slagOreFilter = new OreFilter() {
+            {
+                ore = Blocks.slag;
+                seed = seedOffset[0]++;
+                threshold += 0.06;
+            }
+        };
 
-        OreFilter arkyciteOreFilter = new OreFilter() {{
-            ore = Blocks.arkyciteFloor;
-            seed = seedOffset[0] ++;
-            threshold += 0.06;
-        }};
+        OreFilter arkyciteOreFilter = new OreFilter() {
+            {
+                ore = Blocks.arkyciteFloor;
+                seed = seedOffset[0]++;
+                threshold += 0.06;
+            }
+        };
 
-        ScatterFilter ventFilter = new ScatterFilter() {{
-            floor = Blocks.carbonVent;
-            chance = 0.0015f;
-        }};
-
-
-
-
+        ScatterFilter ventFilter = new ScatterFilter() {
+            {
+                floor = Blocks.carbonVent;
+                chance = 0.0015f;
+            }
+        };
 
         erekirFilters = ObjectSet.with(
                 berylliumFloorFilter, berylliumWallFilter,
@@ -176,7 +164,6 @@ public class PlagueData {
                 slagOreFilter, arkyciteOreFilter,
                 ventFilter);
     }
-
 
     public static int getRandomWithExclusion(int start, int end, int... exclude) {
         int random = start + Mathf.random(end - start - exclude.length);
@@ -189,7 +176,6 @@ public class PlagueData {
         return random;
     }
 
-
 }
 
 class PrestigeLevel {
@@ -197,7 +183,7 @@ class PrestigeLevel {
     public UnitType unit;
     public int frequency;
 
-    public PrestigeLevel(String name, UnitType unit, int frequency){
+    public PrestigeLevel(String name, UnitType unit, int frequency) {
         this.name = name;
         this.unit = unit;
         this.frequency = frequency;

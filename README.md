@@ -1,3 +1,3 @@
-# Plague plugin by Recessive
+# Plague plugin, originally by recessive
 
-## longer update times than Cube World
+## update times faster than you grief

@@ -2,21 +2,22 @@ package main;
 
 public class RTInterval {
 
-    private int seconds;
+    private long seconds;
     private int quotient = 0;
-    public RTInterval(int seconds){
+
+    public RTInterval(long seconds) {
         this.seconds = seconds;
     }
 
-    public boolean get(int time){
-        if(time/seconds > quotient){
-            quotient ++;
+    public boolean get(long time) {
+        if (time / seconds > quotient) {
+            quotient++;
             return true;
         }
         return false;
     }
 
-    public void reset(){
+    public void reset() {
         quotient = 0;
     }
 
