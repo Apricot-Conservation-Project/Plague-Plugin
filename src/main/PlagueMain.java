@@ -504,6 +504,35 @@ public class PlagueMain extends Plugin {
             endgame(new Seq<>());
         });
 
+        // destroy a building, must:
+        // either: be admin
+        // or: be team leader and destroy building of your team
+        handler.<Player>register("destroy", "<x> <y>", "Destroy a building", (args, player) -> {
+            int x = Integer.parseInt(args[0]);
+            int y = Integer.parseInt(args[1]);
+            Building build = world.build(x, y);
+            if (build == null) {
+                player.sendMessage(String.format("[accent]No building at (%d, %d)", x, y));
+                return;
+            }
+            // i would structure this admin || all checks but i want the error handling
+            if (player.admin) { // be admin (skip checks)
+                build.damageContinuous(Float.MAX_VALUE);
+                return;
+            }
+            if (build.team != player.team()) { // of same team
+                player.sendMessage("[accent]Can't break block of other team");
+                return;
+            }
+            CustomPlayer cPly = uuidMapping.get(player.uuid());
+            PlagueTeam pTeam = teams.get(cPly.team);
+            if (!pTeam.leader.player.uuid().equals(cPly.player.uuid())) { // be team leader
+                player.sendMessage("[accent]You must be team leader to destroy a block!");
+                return;
+            }
+            build.damageContinuous(Float.MAX_VALUE);
+        });
+
         handler.<Player>register("infect", "Infect yourself", (args, player) -> {
             if (player.team() == Team.malis) {
                 player.sendMessage("[accent]Already infected!");
@@ -585,7 +614,6 @@ public class PlagueMain extends Plugin {
                     CustomPlayer cPly = uuidMapping.get(player.uuid());
                     PlagueTeam pTeam = teams.get(cPly.team);
 
-                    Log.info(pTeam.leader);
                     if (!pTeam.leader.player.uuid().equals(cPly.player.uuid())) {
                         player.sendMessage("[accent]You must be team leader to lock the team!");
                         return;
@@ -796,8 +824,8 @@ public class PlagueMain extends Plugin {
         }
     }
 
-    /*
-     * Loads the mindustry player into a `CustonPlayer`, and
+    /**
+     * Loads the mindustry player into a {@link CustonPlayer} and
      * maps the uuid in the `uuidMapping`.
      */
     private void loadPlayer(Player player) {
