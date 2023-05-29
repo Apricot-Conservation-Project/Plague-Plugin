@@ -1,13 +1,20 @@
 package main;
 
-import arc.*;
+import arc.Events;
 import arc.math.Mathf;
 import arc.struct.Seq;
-import arc.util.*;
+import arc.util.CommandHandler;
+import arc.util.Log;
+import arc.util.Time;
 import mindustry.Vars;
-import mindustry.content.*;
+import mindustry.content.Blocks;
+import mindustry.content.Items;
+import mindustry.content.UnitTypes;
 import mindustry.core.GameState;
-import mindustry.game.*;
+import mindustry.game.EventType;
+import mindustry.game.Rules;
+import mindustry.game.Team;
+import mindustry.game.Teams;
 import mindustry.gen.*;
 import mindustry.mod.Plugin;
 import mindustry.type.ItemStack;
@@ -39,35 +46,33 @@ public class PlagueMain extends Plugin {
     private Seq<Weapon> quadWeapon;
     private Seq<Weapon> octWeapon;
 
-    private HashMap<UnitType, Float> originalUnitHealth = new HashMap<>();
+    private final HashMap<UnitType, Float> originalUnitHealth = new HashMap<>();
 
     private Seq<UnitType[]> additiveFlare;
     private Seq<UnitType[]> additiveNoFlare;
 
-    private HashMap<String, CustomPlayer> uuidMapping = new HashMap<>();;
+    private final HashMap<String, CustomPlayer> uuidMapping = new HashMap<>();;
     private HashMap<Team, PlagueTeam> teams;
 
-    private int pretime = 6;
+    private final int pretime = 6;
 
-    private RTInterval corePlaceInterval = new RTInterval(20),
-            tenMinInterval = new RTInterval(60 * 10),
-            oneMinInterval = new RTInterval(60);
+    private final RTInterval corePlaceInterval = new RTInterval(20);
+    private final RTInterval tenMinInterval = new RTInterval(60 * 10);
+    private final RTInterval oneMinInterval = new RTInterval(60);
 
     private float multiplier;
-    private static DecimalFormat df = new DecimalFormat("0.00");
+    private static final DecimalFormat df = new DecimalFormat("0.00");
 
-    private int winTime = 45; // In minutes
+    private final int winTime = 45; // In minutes
 
     private float realTime = 0f;
     private long seconds;
     private static long startTime;
     private boolean newRecord;
 
-    private int[] plagueCore = new int[2];
+    private final int[] plagueCore = new int[2];
 
-    private mindustry.maps.Map loadedMap;
-
-    private ArrayList<Integer> rotation = new ArrayList<Integer>();
+    private final ArrayList<Integer> rotation = new ArrayList<Integer>();
     private int mapIndex = 0;
     private String mapID = "0";
 
@@ -175,15 +180,13 @@ public class PlagueMain extends Plugin {
                         && action.player.team() != Team.malis && action.player.team() != Team.blue) {
                     return false;
                 }
-                if (action.block != null &&
-                        ((PlagueData.plagueBanned.contains(action.block) && hasWon)
-                                ||
-                                (PlagueData.plagueBannedPreWin.contains(action.block) && !hasWon))
-                        && action.player.team() == Team.malis) {
-                    return false;
-                }
+                return action.block == null ||
+                        ((!PlagueData.plagueBanned.contains(action.block) || !hasWon)
+                                &&
+                                (!PlagueData.plagueBannedPreWin.contains(action.block) || hasWon))
+                        || action.player.team() != Team.malis;
 
-            }
+            } // TODO readability
 
             return true;
         });
@@ -233,6 +236,7 @@ public class PlagueMain extends Plugin {
             realTime = System.currentTimeMillis() - startTime;
             seconds = (int) (realTime / 1000);
 
+            // Runs if survivors hit win condition
             if (!gameover && !hasWon && seconds > winTime * 60) {
                 hasWon = true;
                 Groups.player.each((player) -> {
@@ -244,8 +248,7 @@ public class PlagueMain extends Plugin {
                         Call.infoMessage(player.con,
                                 "All civilians have been evacuated, and the inhibitors have been launched!" +
                                         "The plague are now extremely powerful and will only get worse. Defend the noble few for as long as possible!");
-                        player.sendMessage(
-                                "[gold]You win![accent] how quaint.");
+                        player.sendMessage("[gold]You win![accent]");
                     }
 
                     updatePlayer(player);
@@ -638,46 +641,46 @@ public class PlagueMain extends Plugin {
                         return;
                     }
 
-                    CustomPlayer cPly = uuidMapping.get(player.uuid());
-                    PlagueTeam pTeam = teams.get(cPly.team);
+                    // Same as the variable player, but converted into a CustomPlayer for additional plague features.
+                    CustomPlayer plaguePlayer = uuidMapping.get(player.uuid());
+                    PlagueTeam playerTeam = teams.get(plaguePlayer.team);
 
-                    if (pTeam.leader.player.uuid() != cPly.player.uuid()) {
+                    // Checks if caller is the leader, exits if not (insufficient permission)
+                    if (!Objects.equals(playerTeam.leader.player.uuid(), plaguePlayer.player.uuid())) {
                         player.sendMessage("[accent]You must be team leader to kick players!");
                         return;
                     }
 
                     if (args.length != 0) {
-                        for (CustomPlayer other : pTeam.players) {
-                            if (("" + other.player.id()).equals(args[0]) ||
-                                    other.player.name.equalsIgnoreCase(args[0]) ||
-                                    other.rawName.equalsIgnoreCase(args[0])) {
-                                if (other.player == player)
+                        for (CustomPlayer teammate : playerTeam.players) {
+                            if (String.valueOf( teammate.player.id() ).equals(args[0]) ||
+                                    teammate.player.name.equalsIgnoreCase(args[0]) ||
+                                    teammate.rawName.equalsIgnoreCase(args[0])) {
+                                if (teammate.player == player)
                                     continue;
 
                                 Team teamToSet = pregame ? Team.blue : Team.malis;
 
-                                other.team = teamToSet;
-                                other.player.team(teamToSet);
-                                other.player.sendMessage(("[accent]You have been kicked from the team!"));
-                                pTeam.blacklistedPlayers.add(other.player.uuid());
-                                pTeam.removePlayer(other);
-                                updatePlayer(other.player);
+                                teammate.team = teamToSet;
+                                teammate.player.team(teamToSet);
+                                teammate.player.sendMessage(("[accent]You have been kicked from the team!"));
+                                playerTeam.blacklistedPlayers.add(teammate.player.uuid());
+                                playerTeam.removePlayer(teammate);
+                                updatePlayer(teammate.player);
                                 return;
                             }
                         }
                     }
 
-                    String s = "[accent]Invalid syntax!\n\n" +
-                            "You can kick the following players:\n";
-                    for (CustomPlayer other : pTeam.players) {
+                    StringBuilder message = new StringBuilder("[accent]Invalid syntax!\n\nYou can kick the following players:\n");
+                    for (CustomPlayer other : playerTeam.players) {
                         if (other.player == player)
                             continue;
-                        s += "[gold] - [accent]ID: [scarlet]" + other.player.id + "[accent]: [white]" + other.rawName
-                                + "\n";
+                        message.append("[gold] - [accent]ID: [scarlet]" + other.player.id + "[accent]: [white]" + other.rawName + "\n");
                     }
-                    s += "\n\nYou must specify a player [blue]name/id[accent]: [scarlet]/teamkick [blue]44";
+                    message.append("\n\nYou must specify a player [blue]name/id[accent]: [scarlet]/teamkick [blue]44");
 
-                    player.sendMessage(s);
+                    player.sendMessage(message.toString());
                     return;
 
                 });
@@ -688,30 +691,30 @@ public class PlagueMain extends Plugin {
                 return;
             }
 
+            CustomPlayer plaguePlayer = uuidMapping.get(player.uuid());
+
             if (!pregame) {
-                CustomPlayer cPly = uuidMapping.get(player.uuid());
-                infect(cPly, true);
+                infect(plaguePlayer, true);
                 return;
             }
 
-            CustomPlayer cPly = uuidMapping.get(player.uuid());
-            PlagueTeam pTeam = teams.get(cPly.team);
+            PlagueTeam playerTeam = teams.get(plaguePlayer.team);
 
-            cPly.team = Team.blue;
-            cPly.player.team(Team.blue);
-            cPly.player.sendMessage(("[accent]You have left the team and are blacklisted!"));
-            pTeam.blacklistedPlayers.add(player.uuid());
-            pTeam.removePlayer(cPly);
-            updatePlayer(cPly.player);
-            if (pTeam.players.size() == 0) {
-                pTeam.locked = true;
-                killTiles(pTeam.team);
+            plaguePlayer.team = Team.blue;
+            plaguePlayer.player.team(Team.blue);
+            plaguePlayer.player.sendMessage(("[accent]You have left the team and are blacklisted!"));
+            playerTeam.blacklistedPlayers.add(player.uuid());
+            playerTeam.removePlayer(plaguePlayer);
+            updatePlayer(plaguePlayer.player);
+            if (playerTeam.players.size() == 0) {
+                playerTeam.locked = true;
+                killTiles(playerTeam.team);
                 return;
             }
 
-            if (pTeam.leader.player.uuid().equals(player.uuid())) {
-                pTeam.leader = pTeam.players.get(0);
-                pTeam.leader.player.sendMessage("[accent]The previous team leader left making you the new leader!");
+            if (playerTeam.leader.player.uuid().equals(player.uuid())) {
+                playerTeam.leader = playerTeam.players.get(0);
+                playerTeam.leader.player.sendMessage("[accent]The previous team leader left making you the new leader!");
             }
 
         });
@@ -825,7 +828,7 @@ public class PlagueMain extends Plugin {
     }
 
     /**
-     * Loads the mindustry player into a {@link CustonPlayer} and
+     * Loads the mindustry player into a {@link CustomPlayer} and
      * maps the uuid in the `uuidMapping`.
      */
     private void loadPlayer(Player player) {
@@ -1048,7 +1051,7 @@ public class PlagueMain extends Plugin {
         resetting = false;
     }
 
-    void loadMap(String args[]) {
+    void loadMap(String[] args) {
 
         int currMap;
         mapIndex = (mapIndex + 1) % maps.customMaps().size;
@@ -1078,7 +1081,7 @@ public class PlagueMain extends Plugin {
         Log.info("Loading map " + map.name());
 
         world.loadMap(map);
-        loadedMap = state.map;
+        mindustry.maps.Map loadedMap = state.map;
 
         Tile tile = state.teams.cores(Team.malis)
                 .find(build -> build.block == Blocks.coreNucleus || build.block == Blocks.coreFoundation
