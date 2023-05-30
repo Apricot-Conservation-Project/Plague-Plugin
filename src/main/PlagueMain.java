@@ -51,7 +51,7 @@ public class PlagueMain extends Plugin {
     private Seq<UnitType[]> additiveFlare;
     private Seq<UnitType[]> additiveNoFlare;
 
-    private final HashMap<String, CustomPlayer> uuidMapping = new HashMap<>();;
+    private final HashMap<String, CustomPlayer> uuidMapping = new HashMap<>();
     private HashMap<Team, PlagueTeam> teams;
 
     private final int pretime = 6;
@@ -72,7 +72,7 @@ public class PlagueMain extends Plugin {
 
     private final int[] plagueCore = new int[2];
 
-    private final ArrayList<Integer> rotation = new ArrayList<Integer>();
+    private final ArrayList<Integer> rotation = new ArrayList<>();
     private int mapIndex = 0;
     private String mapID = "0";
 
@@ -162,16 +162,24 @@ public class PlagueMain extends Plugin {
         };
 
         netServer.admins.addActionFilter((action) -> {
+            // Proceed with potential blockage only if the call involves a player and a tile
             if (action.player != null && action.tile != null) {
-                if (cartesianDistance(action.tile.x, action.tile.y,
-                        plagueCore[0], plagueCore[1]) < world.height() / 2.8) {
-                    if ((action.player.team() != Team.malis
-                            && (action.block == Blocks.vault || action.block == Blocks.reinforcedVault))
-                            || action.player.team() == Team.blue) {
-                        action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!");
-                        return false;
-                    }
+                double distanceToCore = cartesianDistance(action.tile.x, action.tile.y, plagueCore[0], plagueCore[1]);
+                // Blocks placement if player is survivor and attempting to place a core creation block,
+                // and that block is within range of plague core
+                if (distanceToCore < world.height() / 2.8 &&
+                        (
+                            (
+                                action.player.team() != Team.malis
+                                &&
+                                (action.block == Blocks.vault || action.block == Blocks.reinforcedVault)
+                            )
+                            || action.player.team() == Team.blue
+                        )){
+                    action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!");
+                    return false;
                 }
+
                 if (action.tile.block() == Blocks.powerSource) {
                     return false;
                 }
@@ -181,12 +189,13 @@ public class PlagueMain extends Plugin {
                     return false;
                 }
                 return action.block == null ||
-                        ((!PlagueData.plagueBanned.contains(action.block) || !hasWon)
+                        (
+                                (!PlagueData.plagueBanned.contains(action.block) || !hasWon)
                                 &&
-                                (!PlagueData.plagueBannedPreWin.contains(action.block) || hasWon))
+                                (!PlagueData.plagueBannedPreWin.contains(action.block) || hasWon)
+                        )
                         || action.player.team() != Team.malis;
-
-            } // TODO readability
+            }
 
             return true;
         });
@@ -431,7 +440,7 @@ public class PlagueMain extends Plugin {
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             if (event.tile.block() instanceof CoreBlock && event.tile.team().cores().size == 1) {
                 Team deadTeam = event.tile.team();
-                Seq<CustomPlayer> winners = new Seq<CustomPlayer>();
+                Seq<CustomPlayer> winners = new Seq<>();
                 Log.info("Dead team to infect: " + deadTeam);
                 if (!teams.containsKey(deadTeam)) {
                     Call.sendMessage(
@@ -681,8 +690,6 @@ public class PlagueMain extends Plugin {
                     message.append("\n\nYou must specify a player [blue]name/id[accent]: [scarlet]/teamkick [blue]44");
 
                     player.sendMessage(message.toString());
-                    return;
-
                 });
 
         handler.<Player>register("teamleave", "Leave your current team", (args, player) -> {
