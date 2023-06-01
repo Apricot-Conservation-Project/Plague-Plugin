@@ -662,7 +662,7 @@ public class PlagueMain extends Plugin {
 
                     if (args.length != 0) {
                         for (CustomPlayer teamMate : playerTeam.players) {
-                            if (String.valueOf( teamMate.player.id() ).equals(args[0]) ||
+                            if (String.valueOf(teamMate.player.id()).equals(args[0]) ||
                                     teamMate.player.name.equalsIgnoreCase(args[0]) ||
                                     teamMate.rawName.equalsIgnoreCase(args[0])) {
                                 if (teamMate.player == player)
@@ -685,7 +685,7 @@ public class PlagueMain extends Plugin {
                     for (CustomPlayer other : playerTeam.players) {
                         if (other.player == player)
                             continue;
-                        message.append("[gold] - [accent]ID: [scarlet]" + other.player.id + "[accent]: [white]" + other.rawName + "\n");
+                        message.append("[gold] - [accent]ID: [scarlet]").append(other.player.id).append("[accent]: [white]").append(other.rawName).append("\n");
                     }
                     message.append("\n\nYou must specify a player [blue]name/id[accent]: [scarlet]/teamkick [blue]44");
 
