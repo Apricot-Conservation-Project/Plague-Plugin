@@ -661,21 +661,21 @@ public class PlagueMain extends Plugin {
                     }
 
                     if (args.length != 0) {
-                        for (CustomPlayer teammate : playerTeam.players) {
-                            if (String.valueOf( teammate.player.id() ).equals(args[0]) ||
-                                    teammate.player.name.equalsIgnoreCase(args[0]) ||
-                                    teammate.rawName.equalsIgnoreCase(args[0])) {
-                                if (teammate.player == player)
+                        for (CustomPlayer teamMate : playerTeam.players) {
+                            if (String.valueOf( teamMate.player.id() ).equals(args[0]) ||
+                                    teamMate.player.name.equalsIgnoreCase(args[0]) ||
+                                    teamMate.rawName.equalsIgnoreCase(args[0])) {
+                                if (teamMate.player == player)
                                     continue;
 
                                 Team teamToSet = pregame ? Team.blue : Team.malis;
 
-                                teammate.team = teamToSet;
-                                teammate.player.team(teamToSet);
-                                teammate.player.sendMessage(("[accent]You have been kicked from the team!"));
-                                playerTeam.blacklistedPlayers.add(teammate.player.uuid());
-                                playerTeam.removePlayer(teammate);
-                                updatePlayer(teammate.player);
+                                teamMate.team = teamToSet;
+                                teamMate.player.team(teamToSet);
+                                teamMate.player.sendMessage(("[accent]You have been kicked from the team!"));
+                                playerTeam.blacklistedPlayers.add(teamMate.player.uuid());
+                                playerTeam.removePlayer(teamMate);
+                                updatePlayer(teamMate.player);
                                 return;
                             }
                         }
