@@ -1088,7 +1088,6 @@ public class PlagueMain extends Plugin {
         Log.info("Loading map " + map.name());
 
         world.loadMap(map);
-        mindustry.maps.Map loadedMap = state.map;
 
         Tile tile = state.teams.cores(Team.malis)
                 .find(build -> build.block == Blocks.coreNucleus || build.block == Blocks.coreFoundation
@@ -1125,7 +1124,7 @@ public class PlagueMain extends Plugin {
             firstRun = false;
         }
 
-        mapID = loadedMap.file.name();
+        String mapID = state.map.file.name();
         String[] keys = new String[] { "gamemode", "mapID" };
         Object[] vals = new Object[] { "plague", mapID };
         if (!db.hasRow("mindustry_map_data", keys, vals)) {
