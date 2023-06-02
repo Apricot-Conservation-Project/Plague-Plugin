@@ -1,9 +1,11 @@
 package main;
 
+import arc.graphics.Color;
 import arc.struct.Seq;
 import mindustry.game.Team;
 import mindustry.gen.Player;
 import mindustry.gen.Unit;
+import arc.util.Strings;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,16 +31,17 @@ public class CustomPlayer {
 
     public CustomPlayer(Player player) {
         this.player = player;
-        this.rawName = player.name;
+        this.rawName = Strings.stripColors(player.name);
+        player.color = Color.white;
     }
 
     public void reset() {
-        player.name = rawName;
+        updateName();
         player.team(Team.blue);
     }
 
     public void updateName() {
-        player.name = colorMapping.getOrDefault(player.team(), "[olive]") + "\u00A0" + rawName;
+        String team = colorMapping.getOrDefault(player.team(), "[olive]");
+        player.name = team + Strings.stripColors(this.rawName);
     }
-
 }
