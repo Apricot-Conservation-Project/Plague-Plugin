@@ -1,7 +1,10 @@
 package main;
 
-import arc.Events;
+import arc.*;
+import mindustry.world.*;
+import arc.math.geom.*;
 import arc.math.Mathf;
+import arc.struct.ObjectSet;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
@@ -20,8 +23,6 @@ import mindustry.mod.Plugin;
 import mindustry.type.ItemStack;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
-import mindustry.world.Build;
-import mindustry.world.Tile;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.blocks.storage.CoreBlock;
 import mindustry.world.blocks.units.Reconstructor;
@@ -70,7 +71,7 @@ public class PlagueMain extends Plugin {
     private static long startTime;
     private boolean newRecord;
 
-    private final int[] plagueCore = new int[2];
+    private Vec2 plagueCore = new Vec2();
 
     private final ArrayList<Integer> rotation = new ArrayList<>();
     private int mapIndex = 0;
@@ -162,39 +163,32 @@ public class PlagueMain extends Plugin {
         };
 
         netServer.admins.addActionFilter((action) -> {
-            // Proceed with potential blockage only if the call involves a player and a tile
-            if (action.player != null && action.tile != null) {
-                double distanceToCore = cartesianDistance(action.tile.x, action.tile.y, plagueCore[0], plagueCore[1]);
-                // Blocks placement if player is survivor and attempting to place a core creation block,
-                // and that block is within range of plague core
-                if (distanceToCore < world.height() / 2.8 &&
-                        (
-                            (
-                                action.player.team() != Team.malis
-                                &&
-                                (action.block == Blocks.vault || action.block == Blocks.reinforcedVault)
-                            )
-                            || action.player.team() == Team.blue
-                        )){
-                    action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!");
-                    return false;
-                }
+            // we only care about blue team
+            if (action.player == null || action.tile == null)
+                return true;
 
-                if (action.tile.block() == Blocks.powerSource) {
-                    return false;
-                }
+            // mustnt touch power source
+            if (action.tile.block() == Blocks.powerSource)
+                return false;
 
-                if (action.block != null && PlagueData.survivorBanned.contains(action.block)
-                        && action.player.team() != Team.malis && action.player.team() != Team.blue) {
-                    return false;
-                }
-                return action.block == null ||
-                        (
-                                (!PlagueData.plagueBanned.contains(action.block) || !hasWon)
-                                &&
-                                (!PlagueData.plagueBannedPreWin.contains(action.block) || hasWon)
-                        )
-                        || action.player.team() != Team.malis;
+            // survivors cant build banned blocks
+            if (action.block != null
+                    && PlagueData.survivorBanned.contains(action.block)
+                    && action.player.team() != Team.malis
+                    && action.player.team() != Team.blue) {
+                return false;
+            }
+
+            // only blue team past this point
+            if (action.block == null || action.player.team() != Team.blue)
+                return true;
+
+            float distanceToCore = new Vec2(action.tile.x, action.tile.y).dst(plagueCore);
+            // Blocks placement if player is survivor and attempting to place a core
+            // creation block, and that block is too close to plague core
+            if (distanceToCore < world.height() / 2.8 && action.player.team() != Team.malis) {
+                action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!");
+                return false;
             }
 
             return true;
@@ -207,7 +201,7 @@ public class PlagueMain extends Plugin {
             if (pregame) {
                 for (Player player : Groups.player) {
                     if (player.dead()) {
-                        CoreBlock.playerSpawn(world.tile(plagueCore[0], plagueCore[1]), player);
+                        CoreBlock.playerSpawn(world.tile((int) plagueCore.x, (int) plagueCore.y), player);
                     }
                 }
             }
@@ -376,64 +370,68 @@ public class PlagueMain extends Plugin {
 
         Events.on(EventType.BuildSelectEvent.class, event -> {
             Player player = event.builder.getPlayer();
-            if (player == null)
+            // core placing is only relevant for unsettled pioneers placing blocks
+            if (player == null || event.breaking || event.team != Team.blue)
                 return;
 
-            if (event.team == Team.blue) {
-                event.tile.removeNet();
-                if (Build.validPlace(isSerpulo ? Blocks.spectre : Blocks.malign, event.team, event.tile.x, event.tile.y,
-                        0) && !event.breaking) {
-                    Team chosenTeam = null;
-                    for (Teams.TeamData t : state.teams.getActive()) {
-                        if (t.team != Team.malis) {
-                            for (CoreBlock.CoreBuild core : t.cores) {
-                                if (cartesianDistance(event.tile.x, event.tile.y, core.tile.x, core.tile.y) < 150) {
-                                    chosenTeam = t.team;
-                                    if (teams.get(chosenTeam).locked) {
-                                        player.sendMessage("[accent]This team is locked, you cannot join it!");
-                                        return;
-                                    } else if (teams.get(chosenTeam).blacklistedPlayers.contains(player.uuid())) {
-                                        player.sendMessage("[accent]You have been blacklisted from this team!");
-                                        return;
-                                    }
-                                    break;
-                                }
-                            }
-                            if (chosenTeam != null) {
-                                break;
-                            }
-                        }
+            event.tile.removeNet();
+
+            // check if it fits
+            if (!canPlace(isSerpulo ? Blocks.spectre : Blocks.malign, event.tile))
+                return;
+
+            Team chosenTeam = null;
+            // @formatter:off
+            loop: { for (Teams.TeamData t : state.teams.getActive()) {
+                if (t.team != Team.malis)
+                    continue;
+
+                for (CoreBlock.CoreBuild core : t.cores) {
+                    // check if we can join a team
+                    if (new Vec2(event.tile.x, event.tile.y).dst(new Vec2(core.tile.x, core.tile.y)) > 150)
+                        continue;
+
+                    chosenTeam = t.team;
+                    // TODO: allow joining teams when two tea ms are very close
+                    if (teams.get(chosenTeam).locked) {
+                        player.sendMessage("[accent]This team is locked, you cannot join it!");
+                        return;
                     }
-
-                    if (chosenTeam == null) {
-                        teamsCount++;
-                        chosenTeam = Team.all[teamsCount + 6];
-                        teams.put(chosenTeam, new PlagueTeam(chosenTeam, uuidMapping.get(player.uuid())));
+                    if (teams.get(chosenTeam).blacklistedPlayers.contains(player.uuid())) {
+                        player.sendMessage("[accent]You have been blacklisted from this team!");
+                        return;
                     }
-
-                    teams.get(chosenTeam).addPlayer(uuidMapping.get(player.uuid()));
-
-                    player.team(chosenTeam);
-                    uuidMapping.get(player.uuid()).team = chosenTeam;
-                    updatePlayer(player);
-
-                    event.tile.setNet(isSerpulo ? Blocks.coreFoundation : Blocks.coreCitadel, chosenTeam, 0);
-                    state.teams.registerCore((CoreBlock.CoreBuild) event.tile.build);
-                    if (state.teams.cores(chosenTeam).size == 1) {
-                        for (ItemStack stack : isSerpulo ? PlagueData.survivorLoadoutSerpulo
-                                : PlagueData.survivorLoadoutErekir) {
-                            // Call.transferItemTo(stack.item, stack.amount, event.tile.drawx(),
-                            // event.tile.drawy(), event.tile);
-                            Call.setItem(event.tile.build, stack.item, stack.amount);
-                        }
-                    }
-
-                    /*
-                     * player.setDead(true);
-                     * player.onRespawn(state.teams.cores(chosenTeam).get(0).tile);
-                     */
-
+                    break loop;
                 }
+            }}
+            Log.info("success");
+            // @formatter:on
+            // couldnt find a team, make a new one!
+            if (chosenTeam == null) {
+                teamsCount++;
+                // i have no idea why its + 6!
+                chosenTeam = Team.all[teamsCount + 6];
+                teams.put(chosenTeam, new PlagueTeam(chosenTeam, uuidMapping.get(player.uuid())));
+            }
+
+            teams.get(chosenTeam).addPlayer(uuidMapping.get(player.uuid()));
+
+            player.team(chosenTeam);
+            uuidMapping.get(player.uuid()).team = chosenTeam;
+            updatePlayer(player);
+
+            event.tile.setNet(isSerpulo ? Blocks.coreFoundation : Blocks.coreCitadel, chosenTeam, 0);
+            state.teams.registerCore((CoreBlock.CoreBuild) event.tile.build);
+            // if just joining the team, only add a little copper+lead.
+            // or beryllium+graphite if erekir.
+            if (state.teams.cores(chosenTeam).size != 1) {
+                event.tile.build.items
+                        .add(isSerpulo ? PlagueData.survivorIncrementSerpulo : PlagueData.survivorIncrementErekir);
+                return;
+            }
+
+            for (ItemStack stack : isSerpulo ? PlagueData.survivorLoadoutSerpulo : PlagueData.survivorLoadoutErekir) {
+                Call.setItem(event.tile.build, stack.item, stack.amount);
             }
         });
 
@@ -503,17 +501,25 @@ public class PlagueMain extends Plugin {
             mapReset(args);
 
         });
+
+        handler.register("listmaps", "Lists maps with index(0: name)", _args -> {
+            int i = 0;
+            for (mindustry.maps.Map map : maps.customMaps()) {
+                Log.info(i + ": " + map.name());
+                i += 1;
+            }
+        });
     }
 
     @Override
     public void registerClientCommands(CommandHandler handler) {
-        handler.<Player>register("endplague", "[scarlet]Ends the plague game (admin only)", (args, player) -> {
+        handler.<Player>register("endplague", "[map]", "[scarlet]Ends the plague game (admin only)", (args, player) -> {
             if (!player.admin) {
                 player.sendMessage("[accent]Admin only!");
                 return;
             }
             Call.sendMessage("[scarlet]" + player.name + " [accent]has ended the plague game. Ending in 10 seconds...");
-            endgame(new Seq<>());
+            endgame(new Seq<>(), args);
         });
 
         // destroy a building, must:
@@ -650,7 +656,8 @@ public class PlagueMain extends Plugin {
                         return;
                     }
 
-                    // Same as the variable player, but converted into a CustomPlayer for additional plague features.
+                    // Same as the variable player, but converted into a CustomPlayer for additional
+                    // plague features.
                     CustomPlayer plaguePlayer = uuidMapping.get(player.uuid());
                     PlagueTeam playerTeam = teams.get(plaguePlayer.team);
 
@@ -681,11 +688,13 @@ public class PlagueMain extends Plugin {
                         }
                     }
 
-                    StringBuilder message = new StringBuilder("[accent]Invalid syntax!\n\nYou can kick the following players:\n");
+                    StringBuilder message = new StringBuilder(
+                            "[accent]Invalid syntax!\n\nYou can kick the following players:\n");
                     for (CustomPlayer other : playerTeam.players) {
                         if (other.player == player)
                             continue;
-                        message.append("[gold] - [accent]ID: [scarlet]").append(other.player.id).append("[accent]: [white]").append(other.rawName).append("\n");
+                        message.append("[gold] - [accent]ID: [scarlet]").append(other.player.id)
+                                .append("[accent]: [white]").append(other.rawName).append("\n");
                     }
                     message.append("\n\nYou must specify a player [blue]name/id[accent]: [scarlet]/teamkick [blue]44");
 
@@ -721,13 +730,46 @@ public class PlagueMain extends Plugin {
 
             if (playerTeam.leader.player.uuid().equals(player.uuid())) {
                 playerTeam.leader = playerTeam.players.get(0);
-                playerTeam.leader.player.sendMessage("[accent]The previous team leader left making you the new leader!");
+                playerTeam.leader.player
+                        .sendMessage("[accent]The previous team leader left making you the new leader!");
             }
 
         });
     }
 
+    /**
+     * checks if a tile is build-upon-able
+     * https://github.com/Anuken/Mindustry/blob/d09f4c0db564137ccf71774abbdef25335e64168/core/src/mindustry/world/Build.java#LL181C1-L207C1
+     */
+    boolean canPlace(Block type, Tile tile) {
+        int offsetx = -(type.size - 1) / 2;
+        int offsety = -(type.size - 1) / 2;
+
+        for (int dx = 0; dx < type.size; dx++) {
+            for (int dy = 0; dy < type.size; dy++) {
+                int wx = dx + offsetx + tile.x, wy = dy + offsety + tile.y;
+
+                Tile check = world.tile(wx, wy);
+                // @formatter:off
+                if (
+                    // nothing there
+                    check == null
+                    // deep water
+                    || check.floor().isDeep()
+                    // same block, same rotation
+                    || (type == check.block() && check.build != null && type.rotate)
+                    // solid wall
+                    || !check.floor().placeableOn
+                )
+                    return false;
+                // @formatter:on
+            }
+        }
+        return true;
+    }
+
     void initRules() {
+        rules.enemyCoreBuildRadius = 75 * 7;
         rules.canGameOver = false;
         // rules.playerDamageMultiplier = 0;
         rules.buildSpeedMultiplier = 4;
@@ -873,7 +915,7 @@ public class PlagueMain extends Plugin {
         cPly.connected = true;
 
         if (player.team() == Team.blue) {
-            CoreBlock.playerSpawn(world.tile(plagueCore[0], plagueCore[1]), player);
+            CoreBlock.playerSpawn(world.tile((int) plagueCore.x, (int) plagueCore.y), player);
         }
 
         player.sendMessage(leaderboardString);
@@ -893,7 +935,6 @@ public class PlagueMain extends Plugin {
             u.health = 0;
         }
         cPly.followers.clear();
-        Log.info(ply.team());
         if (ply.team() == Team.blue) {
             return;
         }
@@ -913,29 +954,25 @@ public class PlagueMain extends Plugin {
 
     }
 
+    void updateBanned(Player ply, ObjectSet<Block> banned) {
+        Rules tempRules = rules.copy();
+        tempRules.bannedBlocks = banned;
+        for (int i = 0; i < 5; i++) { // Just making sure the packet gets there
+            Call.setRules(ply.con, tempRules);
+        }
+    }
+
     private void updatePlayer(Player ply) {
         if (ply.team() == Team.malis) {
-            Rules tempRules = rules.copy();
-            tempRules.bannedBlocks = hasWon ? PlagueData.plagueBanned : PlagueData.plagueBannedPreWin;
-            for (int i = 0; i < 5; i++) { // Just making sure the packet gets there
-                Call.setRules(ply.con, tempRules);
-            }
+            updateBanned(ply, hasWon ? PlagueData.plagueBanned : PlagueData.plagueBannedPreWin);
         } else if (ply.team() != Team.blue) {
-            Rules tempRules = rules.copy();
-            tempRules.bannedBlocks = PlagueData.survivorBanned;
-            for (int i = 0; i < 5; i++) { // Just making sure the packet gets there
-                Call.setRules(ply.con, tempRules);
-            }
+            updateBanned(ply, PlagueData.survivorBanned);
         }
 
         CustomPlayer cPly = uuidMapping.get(ply.uuid());
         // Update follower units violently
         spawnPlayerUnits(cPly, ply);
         cPly.updateName();
-    }
-
-    private float cartesianDistance(float x, float y, float cx, float cy) {
-        return (float) Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - cy, 2));
     }
 
     // void showHud(Player ply) {
@@ -963,10 +1000,15 @@ public class PlagueMain extends Plugin {
         db.saveRow("mindustry_data", "uuid", uuid, keys, vals);
     }
 
+    void endgame() {
+        endgame(new Seq<>(), new String[] {});
+    }
+
     void endgame(Seq<CustomPlayer> winners) {
+        endgame(winners, new String[] {});
+    }
 
-        Log.info("---- ENDING GAME ----");
-
+    void endgame(Seq<CustomPlayer> winners, String[] map) {
         gameover = true;
 
         String[] keys = new String[] { "gamemode", "mapID" };
@@ -1008,17 +1050,13 @@ public class PlagueMain extends Plugin {
         long finalSurvivorRecord = survivorRecord;
         long finalAvgSurvived = avgSurvived;
         long finalPlays = plays;
-        Time.runTask(60f * 10f, () -> {
 
-            db.saveRow("mindustry_map_data", keys, vals,
-                    new String[] { "survivorRecord", "avgSurvived", "plays" },
-                    new Object[] { finalSurvivorRecord, finalAvgSurvived, finalPlays });
+        db.saveRow("mindustry_map_data", keys, vals,
+                new String[] { "survivorRecord", "avgSurvived", "plays" },
+                new Object[] { finalSurvivorRecord, finalAvgSurvived, finalPlays });
 
-            Events.fire(new EventType.GameOverEvent(Team.malis));
-
-            Log.info("Game ended successfully.");
-            mapReset();
-        });
+        Log.info("Game ended successfully.");
+        mapReset(map);
 
     }
 
@@ -1058,22 +1096,29 @@ public class PlagueMain extends Plugin {
         resetting = false;
     }
 
-    void loadMap(String[] args) {
-
-        int currMap;
-        mapIndex = (mapIndex + 1) % maps.customMaps().size;
+    void loadMap(String args[]) {
         if (args.length > 0) {
-            int i = 0;
-            for (mindustry.maps.Map map : maps.customMaps()) {
-                Log.info(i + ": " + map.name());
-                i += 1;
-            }
-
-            currMap = Integer.parseInt(args[0]);
+            loadMap(Integer.parseInt(args[0]));
         } else {
-            currMap = rotation.get(mapIndex);
+            if (firstRun == true) {
+                mapIndex = new Random().nextInt();
+            }
+            mapIndex++;
+            mapIndex %= maps.customMaps().size;
+            loadMap(mapIndex);
         }
+    }
 
+    /**
+     * overloading my beloved
+     * 
+     * @param map the map index out of the current maps, view with `listmaps`
+     */
+    void loadMap(int map) {
+        loadMap(maps.customMaps().get(map));
+    }
+
+    void loadMap(mindustry.maps.Map map) {
         Seq<Player> players = new Seq<>();
         for (Player p : Groups.player) {
             if (p.isLocal())
@@ -1084,38 +1129,29 @@ public class PlagueMain extends Plugin {
         }
 
         logic.reset();
-        mindustry.maps.Map map = maps.customMaps().get(currMap);
         Log.info("Loading map " + map.name());
 
         world.loadMap(map);
 
-        Tile tile = state.teams.cores(Team.malis)
-                .find(build -> build.block == Blocks.coreNucleus || build.block == Blocks.coreFoundation
-                        || build.block == Blocks.coreAcropolis).tile;
-
         // Make cores and power source indestructible
-        state.teams.cores(Team.malis).each(coreBuild -> coreBuild.health = Integer.MAX_VALUE);
-        for (int x = 0; x < world.width(); x++) {
-            for (int y = 0; y < world.height(); y++) {
-                Tile t = world.tile(x, y);
-                if (t.build != null && t.build.block.equals(Blocks.powerSource)) {
-                    t.build.health = Integer.MAX_VALUE;
-                }
-            }
-        }
-
-        isSerpulo = tile.build.block != Blocks.coreAcropolis;
-
-        plagueCore[0] = tile.x;
-        plagueCore[1] = tile.y;
+        Team.malis.cores().each(coreBuild -> {
+            coreBuild.health = Float.MAX_VALUE;
+            coreBuild.items.clear();
+        });
+        isSerpulo = PlagueData.serpuloCores.contains(Team.malis.cores().get(0).block);
+        world.tiles.forEach(t -> {
+            if (t.build != null && t.build.block.equals(Blocks.powerSource))
+                t.build.health = Float.MAX_VALUE;
+        });
+        plagueCore = new Vec2(map.width / 2, map.height / 2); // center
         world.beginMapLoad();
         PlagueGenerator.defaultOres(world.tiles, isSerpulo);
 
         world.endMapLoad();
-
-        rules.enemyCoreBuildRadius = 75 * 7;
-        rules.hiddenBuildItems = map.rules().hiddenBuildItems;
+        rules.hiddenBuildItems = (isSerpulo ? Items.erekirOnlyItems : PlagueData.serpuloOnlyItems).asSet();
+        rules.bannedBlocks = isSerpulo ? ObjectSet.with() : ObjectSet.with(Blocks.plastaniumConveyor);
         rules.hideBannedBlocks = true;
+
         state.rules = rules.copy();
 
         if (firstRun) {
@@ -1134,8 +1170,6 @@ public class PlagueMain extends Plugin {
         mapRecord = (int) entries.get("survivorRecord"); // Get map record
         avgSurvived = (int) entries.get("avgSurvived"); // Get average time survived
         mapPlays = (int) entries.get("plays"); // Get number of map plays
-
-        tile.build.items.clear();
 
         teams.put(Team.malis, new PlagueTeam(Team.malis));
         teams.put(Team.blue, new PlagueTeam(Team.blue));
