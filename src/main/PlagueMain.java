@@ -93,9 +93,11 @@ public class PlagueMain extends Plugin {
     private boolean hasWon;
 
     public int counts;
-
-    final String mono_info = "Monos() will explode, adding to your teams internal mono pool. Abstract monos will then produce 120 copper & lead per second, with a limit of 64 \"monos\"";
-    final String info = "[#4d004d]{[purple]AA[#4d004d]} [olive]Plague[accent] is a survival game mode with two teams," +
+    final short MONO_LIMIT = 500;
+    final String mono_info = "[accent]Monos() will explode, adding to your teams internal mono pool. Abstract monos will then produce [scarlet]20[]  +  per second. You can have a maximum of "
+            + String.valueOf(MONO_LIMIT) + " \"monos\", meaning " + String.valueOf(MONO_LIMIT * 20)
+            + "  +  per second!";
+    final String info = "[olive]Plague[accent] is a survival game mode with two teams," +
             " the [scarlet]Plague [accent]and [green]Survivors[accent].\n\n" +
             "The [scarlet]Plague[accent] build up their economy to make the biggest army possible, and try to" +
             " break through the [green]Survivors[accent] defenses.\n\n" +
@@ -497,12 +499,12 @@ public class PlagueMain extends Plugin {
                     return;
                 }
                 PlagueTeam team = teams.get(event.unit.team);
-                team.monos = min((byte) (team.monos + 1), (byte) 255);
+                team.monos = (short) Math.min((int) (team.monos + 1), (int) MONO_LIMIT);
                 // youve got monos
                 for (Player player : Groups.player) {
                     if (player.team() == event.unit.team()) {
                         Call.label(player.con,
-                                "monos = " + (team.monos != 255 ? String.valueOf(team.monos) : "MAX"),
+                                "monos = " + (team.monos != MONO_LIMIT ? String.valueOf(team.monos) : "MAX"),
                                 5f, event.unit.tileX() * 8, event.unit.tileY() * 8);
                     }
                 }
@@ -513,10 +515,11 @@ public class PlagueMain extends Plugin {
             if (event.unit.type == UnitTypes.mono) {
                 PlagueTeam team = teams.get(event.unit.team);
                 // kill the monos even if their death is meaningless
-                if (team.monos == 255) {
+                if (team.monos == MONO_LIMIT && !team.reached_cap) {
+                    team.reached_cap = true;
                     team.players.forEach((p) -> {
                         p.player.sendMessage(
-                                "You have reached the mono cap, feel free to delete the mono factory. See /monos for more information.");
+                                "[accent]You have reached the mono cap, feel free to delete the mono factory. See /monos for more information.");
                     });
                 }
                 event.unit.health = 0;
@@ -558,13 +561,6 @@ public class PlagueMain extends Plugin {
                 i += 1;
             }
         });
-    }
-
-    /**
-     * if equal, is b
-     */
-    byte min(byte a, byte b) {
-        return a < b ? a : b;
     }
 
     @Override

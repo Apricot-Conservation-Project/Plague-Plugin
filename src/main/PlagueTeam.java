@@ -11,7 +11,8 @@ public class PlagueTeam {
     public ArrayList<String> blacklistedPlayers = new ArrayList<>();
     public CustomPlayer leader;
     public boolean locked = false;
-    public byte monos = 0;
+    public boolean reached_cap = false;
+    public short monos = 0;
 
     public PlagueTeam(Team team) {
         this(team, null);
