@@ -25,6 +25,7 @@ import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.blocks.storage.CoreBlock;
+import mindustry.world.blocks.storage.CoreBlock.CoreBuild;
 import mindustry.world.blocks.units.Reconstructor;
 
 import java.text.DecimalFormat;
@@ -93,7 +94,8 @@ public class PlagueMain extends Plugin {
 
     public int counts;
 
-    String info = "[#4d004d]{[purple]AA[#4d004d]} [olive]Plague[accent] is a survival game mode with two teams," +
+    final String mono_info = "Monos() will explode, adding to your teams internal mono pool. Abstract monos will then produce 120 copper & lead per second, with a limit of 64 \"monos\"";
+    final String info = "[#4d004d]{[purple]AA[#4d004d]} [olive]Plague[accent] is a survival game mode with two teams," +
             " the [scarlet]Plague [accent]and [green]Survivors[accent].\n\n" +
             "The [scarlet]Plague[accent] build up their economy to make the biggest army possible, and try to" +
             " break through the [green]Survivors[accent] defenses.\n\n" +
@@ -101,7 +103,7 @@ public class PlagueMain extends Plugin {
             "To become a " +
             "[green]Survivor[accent], you must place a core in the first 2 minutes of the game, where you are " +
             "allowed to choose your team. Place any block to place a core at the start of the game.\n\n" +
-            "Air units do no damage before 45 minutes";
+            "Air units do no damage before 45 minutes\n\n" + mono_info;
 
     @Override
     public void init() {
@@ -230,8 +232,12 @@ public class PlagueMain extends Plugin {
                     }
 
                 } else {
-                    Call.sendMessage("[accent]You have [scarlet]" + (pretime * 20 - counts * 20) +
-                            " [accent]seconds left to place a core. Place any block to place a core.");
+                    for (Player ply : Groups.player) {
+                        if (ply.team() == Team.blue) {
+                            ply.sendMessage("[accent]You have [scarlet]" + (pretime * 20 - counts * 20) +
+                                    " [accent]seconds left to place a core. Place any block to place a core.");
+                        }
+                    }
                 }
 
             }
@@ -298,6 +304,16 @@ public class PlagueMain extends Plugin {
                 Groups.player.each((player) -> {
                     uuidMapping.get(player.uuid()).playTime += 1;
                 });
+            }
+            // runs 20 times a second, 1 mono = 20/s. caps at 255 monos = 5100/s
+            if (Core.graphics.getFrameId() % 4 == 0) {
+                for (PlagueTeam team : teams.values()) {
+                    if (team.monos > 0 && !team.team.cores().isEmpty()) {
+                        CoreBuild core = team.team.cores().first();
+                        core.items.add(Items.copper, team.monos);
+                        core.items.add(Items.lead, team.monos);
+                    }
+                }
             }
         });
 
@@ -475,6 +491,39 @@ public class PlagueMain extends Plugin {
             }
         });
 
+        Events.on(EventType.UnitDestroyEvent.class, event -> {
+            if (event.unit.type == UnitTypes.mono) {
+                if (event.unit.team.core() == null) {
+                    return;
+                }
+                PlagueTeam team = teams.get(event.unit.team);
+                team.monos = min((byte) (team.monos + 1), (byte) 255);
+                // youve got monos
+                for (Player player : Groups.player) {
+                    if (player.team() == event.unit.team()) {
+                        Call.label(player.con,
+                                "monos = " + (team.monos != 255 ? String.valueOf(team.monos) : "MAX"),
+                                5f, event.unit.tileX() * 8, event.unit.tileY() * 8);
+                    }
+                }
+            }
+        });
+        // monos must die
+        Events.on(EventType.UnitCreateEvent.class, event -> {
+            if (event.unit.type == UnitTypes.mono) {
+                PlagueTeam team = teams.get(event.unit.team);
+                // kill the monos even if their death is meaningless
+                if (team.monos == 255) {
+                    team.players.forEach((p) -> {
+                        p.player.sendMessage(
+                                "You have reached the mono cap, feel free to delete the mono factory. See /monos for more information.");
+                    });
+                }
+                event.unit.health = 0;
+                event.unit.dead = true;
+            }
+        });
+
         // Events.on(EventType.NewName.class, event -> {
         // Player ply = uuidMapping.get(event.uuid).player;
         // CustomPlayer cPly = uuidMapping.get(event.uuid);
@@ -511,6 +560,13 @@ public class PlagueMain extends Plugin {
         });
     }
 
+    /**
+     * if equal, is b
+     */
+    byte min(byte a, byte b) {
+        return a < b ? a : b;
+    }
+
     @Override
     public void registerClientCommands(CommandHandler handler) {
         handler.<Player>register("endplague", "[map]", "[scarlet]Ends the plague game (admin only)", (args, player) -> {
@@ -520,6 +576,10 @@ public class PlagueMain extends Plugin {
             }
             Call.sendMessage("[scarlet]" + player.name + " [accent]has ended the plague game. Ending in 10 seconds...");
             endgame(new Seq<>(), args);
+        });
+
+        handler.<Player>register("monos", "explain monos", (args, player) -> {
+            Call.infoMessage(player.con, mono_info);
         });
 
         // destroy a building, must:
@@ -1103,8 +1163,7 @@ public class PlagueMain extends Plugin {
             if (firstRun == true) {
                 mapIndex = new Random().nextInt();
             }
-            mapIndex++;
-            mapIndex %= maps.customMaps().size;
+            mapIndex = ((mapIndex > 0 ? mapIndex : -mapIndex) + 1) % maps.customMaps().size;
             loadMap(mapIndex);
         }
     }
