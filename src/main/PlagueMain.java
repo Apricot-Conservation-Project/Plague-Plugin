@@ -365,17 +365,6 @@ public class PlagueMain extends Plugin {
             }
         });
 
-        Events.on(EventType.UnitCreateEvent.class, event -> {
-
-            if (event.unit.type == UnitTypes.horizon && event.unit.team != Team.malis) {
-                // Let players know they can't build this unit
-                Call.label("Survivors can't build horizons!",
-                        5f, event.spawner.tileX() * 8, event.spawner.tileY() * 8);
-                event.unit.health = 0;
-                event.unit.dead = true;
-            }
-        });
-
         Events.on(EventType.PlayerJoin.class, event -> {
             loadPlayer(event.player);
         });
@@ -512,9 +501,18 @@ public class PlagueMain extends Plugin {
         });
         // monos must die
         Events.on(EventType.UnitCreateEvent.class, event -> {
-            if (event.unit.type == UnitTypes.mono) {
+            // im pretty sure this actually never happens;
+            // there seems to be a upgrade thing, that doesnt let horizons get out at all.
+            // ill keep it just in case though, what harm could it cause?
+            if ((event.unit.type == UnitTypes.horizon || event.unit.type == UnitTypes.zenith)
+                    && event.unit.team != Team.malis) {
+                // let players know they can't build this unit
+                Call.label(
+                        String.format("Survivors can't build %s!",
+                                (event.unit.type == UnitTypes.horizon ? "horizon" : "zenith")),
+                        5f, event.spawner.tileX() * 8, event.spawner.tileY() * 8);
+            } else if (event.unit.type == UnitTypes.mono) {
                 PlagueTeam team = teams.get(event.unit.team);
-                // kill the monos even if their death is meaningless
                 if (team.monos == MONO_LIMIT && !team.reached_cap) {
                     team.reached_cap = true;
                     team.players.forEach((p) -> {
@@ -522,9 +520,12 @@ public class PlagueMain extends Plugin {
                                 "[accent]You have reached the mono cap, feel free to delete the mono factory. See /monos for more information.");
                     });
                 }
-                event.unit.health = 0;
-                event.unit.dead = true;
+                // dont return: kill the monos even if their death is meaningless
+            } else {
+                return;
             }
+            event.unit.health = 0;
+            event.unit.dead = true;
         });
 
         // Events.on(EventType.NewName.class, event -> {

@@ -8,25 +8,7 @@ import mindustry.maps.filters.*;
 import mindustry.type.*;
 import mindustry.world.Block;
 
-import java.util.*;
-
 public class PlagueData {
-    public static final Map<String, Float> itemValues;
-    static {
-        Map<String, Float> aMap = new HashMap<>();
-        aMap.put("copper", 0.5f);
-        aMap.put("lead", 1f);
-        aMap.put("metaglass", 1.5f);
-        aMap.put("graphite", 1.5f);
-        aMap.put("titanium", 1.5f);
-        aMap.put("silicon", 2f);
-        aMap.put("thorium", 1.5f);
-        aMap.put("plastanium", 3f);
-        aMap.put("phase-frabic", 5f);
-        aMap.put("surge-alloy", 6f);
-        itemValues = Collections.unmodifiableMap(aMap);
-    }
-
     public static final Seq<ItemStack> survivorLoadoutSerpulo = ItemStack.list(Items.copper, 3600, Items.lead, 3600,
             Items.graphite, 1800, Items.titanium, 1800, Items.silicon, 900, Items.metaglass, 900);
 
@@ -53,7 +35,7 @@ public class PlagueData {
             Blocks.logicDisplay, Blocks.largeLogicDisplay, Blocks.canvas, // Blocks.microProcessor,
                                                                           // Blocks.logicProcessor,
                                                                           // Blocks.hyperProcessor,
-            Blocks.multiplicativeReconstructor, Blocks.exponentialReconstructor, Blocks.tetrativeReconstructor,
+            Blocks.exponentialReconstructor, Blocks.tetrativeReconstructor,
             Blocks.shipAssembler, Blocks.mechAssembler, Blocks.tankAssembler, Blocks.tankFabricator,
             Blocks.shipFabricator,
             Blocks.mechFabricator, Blocks.tankRefabricator, Blocks.mechRefabricator, Blocks.shipRefabricator,
@@ -182,16 +164,4 @@ public class PlagueData {
         return random;
     }
 
-}
-
-class PrestigeLevel {
-    public String name;
-    public UnitType unit;
-    public int frequency;
-
-    public PrestigeLevel(String name, UnitType unit, int frequency) {
-        this.name = name;
-        this.unit = unit;
-        this.frequency = frequency;
-    }
 }
