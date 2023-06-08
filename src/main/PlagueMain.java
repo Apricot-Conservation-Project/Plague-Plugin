@@ -1204,7 +1204,7 @@ public class PlagueMain extends Plugin {
 
         world.endMapLoad();
         rules.hiddenBuildItems = (isSerpulo ? Items.erekirOnlyItems : PlagueData.serpuloOnlyItems).asSet();
-        rules.bannedBlocks = isSerpulo ? ObjectSet.with() : ObjectSet.with(Blocks.plastaniumConveyor);
+        rules.bannedBlocks = map.rules().bannedBlocks;
         rules.hideBannedBlocks = true;
 
         state.rules = rules.copy();

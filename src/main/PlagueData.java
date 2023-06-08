@@ -41,7 +41,7 @@ public class PlagueData {
 
     public static final Seq<Item> serpuloOnlyItems = Seq.with(Items.copper, Items.lead, Items.metaglass,
             Items.blastCompound, Items.sporePod,
-            Items.titanium);
+            Items.titanium, Items.plastanium);
 
     public static final ObjectSet<Block> serpuloCores = ObjectSet.with(Blocks.coreNucleus, Blocks.coreFoundation,
             Blocks.coreShard);
