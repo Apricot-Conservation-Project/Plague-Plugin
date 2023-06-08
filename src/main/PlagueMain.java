@@ -76,7 +76,6 @@ public class PlagueMain extends Plugin {
 
     private final ArrayList<Integer> rotation = new ArrayList<>();
     private int mapIndex = 0;
-    private String mapID = "0";
 
     private int mapRecord;
     private int avgSurvived;
@@ -1068,7 +1067,7 @@ public class PlagueMain extends Plugin {
         gameover = true;
 
         String[] keys = new String[] { "gamemode", "mapID" };
-        Object[] vals = new Object[] { "plague", mapID };
+        Object[] vals = new Object[] { "plague", state.map.file.name() };
         HashMap<String, Object> entries = db.loadRow("mindustry_map_data", keys, vals);
         long timeNow = seconds;
 
@@ -1215,9 +1214,8 @@ public class PlagueMain extends Plugin {
             firstRun = false;
         }
 
-        String mapID = state.map.file.name();
         String[] keys = new String[] { "gamemode", "mapID" };
-        Object[] vals = new Object[] { "plague", mapID };
+        Object[] vals = new Object[] { "plague", state.map.file.name() };
         if (!db.hasRow("mindustry_map_data", keys, vals)) {
             db.addEmptyRow("mindustry_map_data", keys, vals);
         }
