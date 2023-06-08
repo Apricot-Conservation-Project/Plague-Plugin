@@ -401,7 +401,8 @@ public class PlagueMain extends Plugin {
             Team chosenTeam = null;
             // @formatter:off
             loop: { for (Teams.TeamData t : state.teams.getActive()) {
-                if (t.team != Team.malis)
+                // skip plague
+                if (t.team == Team.malis)
                     continue;
 
                 for (CoreBlock.CoreBuild core : t.cores) {
