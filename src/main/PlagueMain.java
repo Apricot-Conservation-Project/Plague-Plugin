@@ -166,7 +166,7 @@ public class PlagueMain extends Plugin {
         };
 
         netServer.admins.addActionFilter((action) -> {
-            // we only care about blue team
+            // dont care
             if (action.player == null || action.tile == null)
                 return true;
 
@@ -174,22 +174,32 @@ public class PlagueMain extends Plugin {
             if (action.tile.block() == Blocks.powerSource)
                 return false;
 
+            if (action.block == null)
+                return true;
+
+            // plague cant buidl banned blocks
+            if (action.player.team() == Team.malis) {
+                if (hasWon ? PlagueData.plagueBanned.contains(action.block)
+                        : PlagueData.plagueBannedPreWin.contains(action.block))
+                    return false;
+                return true; // rest does not concern plague
+            }
+
             // survivors cant build banned blocks
             if (action.block != null
                     && PlagueData.survivorBanned.contains(action.block)
-                    && action.player.team() != Team.malis
                     && action.player.team() != Team.blue) {
                 return false;
             }
 
-            // only blue team past this point
-            if (action.block == null || action.player.team() != Team.blue)
+            if (action.player.team() != Team.blue
+                    && action.block != (isSerpulo ? Blocks.vault : Blocks.reinforcedVault))
                 return true;
 
             float distanceToCore = new Vec2(action.tile.x, action.tile.y).dst(plagueCore);
             // Blocks placement if player is survivor and attempting to place a core
             // creation block, and that block is too close to plague core
-            if (distanceToCore < world.height() / 2.8 && action.player.team() != Team.malis) {
+            if (distanceToCore < world.height() / 3.6 && action.player.team() != Team.malis) {
                 action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!");
                 return false;
             }
@@ -197,7 +207,9 @@ public class PlagueMain extends Plugin {
             return true;
         });
 
-        Events.run(EventType.Trigger.update, () -> {
+        Events.run(EventType.Trigger.update, () ->
+
+        {
             if (resetting || firstRun)
                 return;
             // Spawn player in core if they aren't
@@ -310,7 +322,7 @@ public class PlagueMain extends Plugin {
             if (Core.graphics.getFrameId() % 4 == 0) {
                 for (PlagueTeam team : teams.values()) {
                     if (team.monos > 0 && !team.team.cores().isEmpty()) {
-                        CoreBuild core = team.team.cores().first();
+                        CoreBuild core = team.team.core();
                         core.items.add(Items.copper, team.monos);
                         core.items.add(Items.lead, team.monos);
                     }
@@ -387,7 +399,7 @@ public class PlagueMain extends Plugin {
                 return;
 
             Team chosenTeam = null;
-            // @formatter:off
+        // @formatter:off
             loop: { for (Teams.TeamData t : state.teams.getActive()) {
                 // skip plague
                 if (t.team == Team.malis)
@@ -472,14 +484,34 @@ public class PlagueMain extends Plugin {
         });
 
         Events.on(EventType.TapEvent.class, event -> {
-            if (event.tile.team() != Team.malis && event.player.team() == event.tile.team()) {
-                if (event.tile.block() == Blocks.vault && event.tile.build.items.has(Items.thorium, 997)) {
-                    event.tile.build.tile.setNet(Blocks.coreShard, event.tile.team(), 0);
-                }
-                if (event.tile.block() == Blocks.reinforcedVault && event.tile.build.items.has(Items.thorium, 897)) {
-                    event.tile.build.tile.setNet(Blocks.coreBastion, event.tile.team(), 0);
-                }
-            }
+            final Team t = event.tile.team();
+        // @formatter:off
+            if (
+                // plague team
+                t == Team.malis
+                // it isnt a vault
+                || event.tile.block() != (isSerpulo ? Blocks.vault : Blocks.reinforcedVault)
+                // player is tapping other teams vault
+                || event.player.team() != t
+            ) return;
+            // (?)
+            float dist = new Vec2(t.core().tile.x, t.core().tile.y).dst(new Vec2(event.tile.x, event.tile.y)) * (float)15.0;
+            int cost = Mathf.clamp((int)snap(dist, (float)500f), 1000, 10000);
+            
+            // not enough items
+            // if core items is 500, and vault items is 500, and cost is 1000, we can still make a core
+            if (t.core().items.get(Items.thorium) + event.tile.build.items.get(Items.thorium) <= cost) return;
+            // @formatter:on
+            // remove 1000 - vault items thorium
+            // if a vault is next to a core, its items are the teams thorium,
+            // so building a chain of cores is free. (1000 - thorium in core < 0 = true)
+            final int remove = cost - event.tile.build.items.get(Items.thorium);
+            if (remove > 0)
+                event.tile.team().core().items.remove(Items.thorium, remove);
+            // bastion is 4x4 so you get wierd results, use a shard.
+            final Block core = Blocks.coreShard; // isSerpulo ? Blocks.coreShard : Blocks.coreBastion;
+            // event.tile.build.tile to not move the core when the click isnt centered
+            event.tile.build.tile.setNet(core, t, 0);
         });
 
         Events.on(EventType.UnitDestroyEvent.class, event -> {
@@ -562,6 +594,10 @@ public class PlagueMain extends Plugin {
                 i += 1;
             }
         });
+    }
+
+    public float snap(float f, float step) {
+        return Mathf.floor(f / step + (float) 0.5) * step;
     }
 
     @Override
@@ -1107,14 +1143,14 @@ public class PlagueMain extends Plugin {
         long finalSurvivorRecord = survivorRecord;
         long finalAvgSurvived = avgSurvived;
         long finalPlays = plays;
+        Time.runTask(60f * 5f, () -> {
+            db.saveRow("mindustry_map_data", keys, vals,
+                    new String[] { "survivorRecord", "avgSurvived", "plays" },
+                    new Object[] { finalSurvivorRecord, finalAvgSurvived, finalPlays });
 
-        db.saveRow("mindustry_map_data", keys, vals,
-                new String[] { "survivorRecord", "avgSurvived", "plays" },
-                new Object[] { finalSurvivorRecord, finalAvgSurvived, finalPlays });
-
-        Log.info("Game ended successfully.");
-        mapReset(map);
-
+            Log.info("Game ended successfully.");
+            mapReset(map);
+        });
     }
 
     void mapReset() {
