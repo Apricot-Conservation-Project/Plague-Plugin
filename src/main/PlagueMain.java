@@ -556,11 +556,13 @@ public class PlagueMain extends Plugin {
         });
 
         handler.register("listmaps", "Lists maps with index(0: name)", _args -> {
+            StringBuilder s = new StringBuilder();
             int i = 0;
             for (mindustry.maps.Map map : maps.customMaps()) {
-                Log.info(i + ": " + map.name());
+                s.append(i + ":" + map.name() + "\n");
                 i += 1;
             }
+            Log.info(s.toString());
         });
     }
 
