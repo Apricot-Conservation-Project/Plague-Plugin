@@ -4,8 +4,7 @@ import arc.*;
 import mindustry.world.*;
 import arc.math.geom.*;
 import arc.math.Mathf;
-import arc.struct.ObjectSet;
-import arc.struct.Seq;
+import arc.struct.*;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Time;
@@ -76,7 +75,6 @@ public class PlagueMain extends Plugin {
 
     private final ArrayList<Integer> rotation = new ArrayList<>();
     private int mapIndex = 0;
-    private String mapID = "0";
 
     private int mapRecord;
     private int avgSurvived;
@@ -94,9 +92,9 @@ public class PlagueMain extends Plugin {
 
     public int counts;
     final short MONO_LIMIT = 500;
-    final String mono_info = "[accent]Monos() will explode, adding to your teams internal mono pool. Abstract monos will then produce [scarlet]20[]  +  per second. You can have a maximum of "
+    final String mono_info = "[accent]Monos([white][]) will explode, adding to your teams internal mono pool. Abstract monos will then produce [scarlet]20[] [white][] + [white][] per second. You can have a maximum of "
             + String.valueOf(MONO_LIMIT) + " \"monos\", meaning " + String.valueOf(MONO_LIMIT * 20)
-            + "  +  per second!";
+            + " [white][] + [white][] per second!";
     final String info = "[olive]Plague[accent] is a survival game mode with two teams," +
             " the [scarlet]Plague [accent]and [green]Survivors[accent].\n\n" +
             "The [scarlet]Plague[accent] build up their economy to make the biggest army possible, and try to" +
@@ -281,9 +279,9 @@ public class PlagueMain extends Plugin {
 
             if (!gameover && !newRecord && seconds > mapRecord) {
                 newRecord = true;
-                Call.sendMessage("[gold]New record![accent] Old record of[gold] "
-                        + mapRecord / 60 + "[accent] minutes and [gold]" + mapRecord % 60 + "[accent] seconds"
-                        + "[accent] was beaten!");
+                Call.sendMessage("[gold]New record![accent] Old record of "
+                        + formatTime(mapRecord)
+                        + " was beaten!");
             }
 
             if (tenMinInterval.get(seconds)) {
@@ -329,6 +327,7 @@ public class PlagueMain extends Plugin {
                 CustomPlayer cPly = uuidMapping.get(event.player.uuid());
 
                 if (cPly.playTime < 600) {
+                    event.player.clearUnit();
                     event.player.sendMessage("[accent]You need at least [scarlet]600[accent] minutes of playtime " +
                             "before you can control a T5!");
                     return;
@@ -563,6 +562,11 @@ public class PlagueMain extends Plugin {
                 i += 1;
             }
         });
+
+        handler.register("endplague", "[map]", "End the plague game", args -> {
+            Call.sendMessage("[scarlet]server[accent] has ended the plague game. Ending in 10 seconds...");
+            endgame(new Seq<>(), args);
+        });
     }
 
     @Override
@@ -593,7 +597,7 @@ public class PlagueMain extends Plugin {
             }
             // i would structure this admin || all checks but i want the error handling
             if (player.admin) { // be admin (skip checks)
-                build.damageContinuous(Float.MAX_VALUE);
+                build.kill();
                 return;
             }
             if (build.team != player.team()) { // of same team
@@ -606,7 +610,88 @@ public class PlagueMain extends Plugin {
                 player.sendMessage("[accent]You must be team leader to destroy a block!");
                 return;
             }
-            build.damageContinuous(Float.MAX_VALUE);
+            build.kill();
+        });
+
+        handler.<Player>register("multiplier", "The current damage & health multiplier", (_args, player) -> {
+            player.sendMessage(String.format("[scarlet]%.1fx [accent]health and damage", multiplier));
+        });
+
+        handler.<Player>register("monocount", "The current number of monos your team owns", (_args, player) -> {
+            player.sendMessage(String.format("[scarlet]%d [white]", teams.get(player.team()).monos));
+        });
+
+        // @formatter:off
+        // doesnt work, use `use `/js Vars.world.tiles.getc(Vars.player.x, Vars.player.y).setNet(Blocks.worldProcessor, Vars.player.team, 0)`
+        // @formatter:on
+        /*
+         * handler.<Player>register("wp", "Creates a world processor(admin only)",
+         * (args, player) -> {
+         * if (!player.admin) {
+         * player.sendMessage("[scarlet]Not admin!");
+         * return;
+         * }
+         * Tile t = world.tiles.getc((int) player.x, (int) player.y);
+         * if (t.build != null) {
+         * player.sendMessage("[accent]Block already exists");
+         * return;
+         * }
+         * t.setNet(Blocks.worldProcessor, player.team(), 0);
+         * });
+         */
+
+        handler.<Player>register("js", "<script...>", "Run arbitrary javascript(admin only)", (arg, player) -> {
+            if (!player.admin) {
+                player.sendMessage("[scarlet]Not admin!");
+                return;
+            }
+            String result = js(arg[0]);
+            player.sendMessage(result);
+            Log.info(result);
+        });
+
+        handler.<Player>register("status", "Server status", (_arg, player) -> {
+            player.sendMessage(
+                    String.format("[gold]%d[accent] TPS, [gold]%d[] MB used.\n\n[gold]%d[] units.",
+                            Core.graphics.getFramesPerSecond(),
+                            Core.app.getJavaHeap() / 1024 / 1024,
+                            Groups.unit.size()));
+            ;
+        });
+
+        handler.<Player>register("turrets", "Count your turrets", (_arg, player) -> {
+            if (player.team() == Team.malis) {
+                player.sendMessage("[accent][purple]Plague[] team cannot have turrets.");
+                return;
+            }
+            if (player.team() == Team.blue) {
+                player.sendMessage("[accent]Become a survivor first.");
+                return;
+            }
+            ObjectMap<Block, Integer> builds = new ObjectMap<>();
+            for (Building b : Groups.build) {
+                if (b.team == player.team()) {
+                    if (b.block == Blocks.foreshadow || b.block == Blocks.cyclone || b.block == Blocks.swarmer
+                            || b.block == Blocks.duo) {
+                        builds.put(b.block, builds.get(b.block, 0) + 1);
+                    }
+                }
+            }
+            if (builds.size == 0) {
+                player.sendMessage("[accent]You have no turrets. How are you alive?");
+                return;
+            }
+            StringBuilder s = new StringBuilder("[accent]");
+
+            for (ObjectMap.Entry<Block, Integer> e : builds) {
+                s.append("[white]");
+                s.append(PlagueData.emojiMap.get(e.key));
+                // s.append(e.key.emoji());
+                s.append("[gold]");
+                s.append(e.value);
+                s.append("[accent]\n");
+            }
+            player.sendMessage(s.toString());
         });
 
         handler.<Player>register("infect", "Infect yourself", (args, player) -> {
@@ -621,43 +706,20 @@ public class PlagueMain extends Plugin {
         handler.<Player>register("stats", "Display stats about the current map", (args, player) -> {
             String s = "[accent]Map stats for: [white]" + state.map.name() + "\n" +
                     "[accent]Author: [white]" + state.map.author() + "\n" +
-                    "[accent]Plays: [scarlet]" + mapPlays + "\n" +
-                    "[accent]Average time survived: [scarlet]" + avgSurvived / 60 + "[accent] minutes and [scarlet]"
-                    + avgSurvived % 60 + "[accent] seconds.\n" +
-                    "[accent]Suvivor record: [scarlet]" + mapRecord / 60 + "[accent] minutes and [scarlet]"
-                    + mapRecord % 60 + "[accent] seconds.";
+                    "[accent]Plays: [gold]" + mapPlays + "\n" +
+                    "[accent]Average time survived: " + formatTime(avgSurvived) + "\n" +
+                    "[accent]Suvivor record: " + formatTime(mapRecord);
             player.sendMessage(s);
 
         });
 
         handler.<Player>register("playtime", "How long you have played", (args, player) -> {
-            Duration dur = Duration.ofMinutes(uuidMapping.get(player.uuid()).playTime);
-            long hours = dur.toHours();
-            long mins = dur.toMinutesPart();
-            if (hours == 0) {
-                player.sendMessage(
-                        String.format("[accent]Playtime: [scarlet]%2d [accent]minute", mins) + (mins != 1 ? "s" : ""));
-                return;
-            }
             player.sendMessage(
-                    String.format("[accent]Playtime: [scarlet]%d [accent]hour%s [scarlet]%2d [accent]minute%s",
-                            hours, hours != 1 ? "s" : "", mins, mins != 1 ? "s" : ""));
+                    "[accent]Playtime: " + formatTime(Duration.ofMinutes(uuidMapping.get(player.uuid()).playTime)));
         });
 
         handler.<Player>register("time", "Display the time now", (args, player) -> {
-            Duration dur = Duration.ofSeconds(seconds);
-            long hours = dur.toHours();
-            int mins = dur.toMinutesPart();
-            int seconds = dur.toSecondsPart();
-
-            String t = "[accent]Time: ";
-            if (hours != 0) {
-                t += String.format("[scarlet]%d[accent]:", hours);
-            }
-            if (mins != 0) {
-                t += String.format("[scarlet]%d[accent]:", mins);
-            }
-            player.sendMessage(t + String.format("[scarlet]%d", seconds));
+            player.sendMessage("[accent]Time: " + formatTime(Duration.ofSeconds(seconds)));
         });
 
         handler.<Player>register("leaderboard", "Display the leaderboard", (args, player) -> {
@@ -824,6 +886,30 @@ public class PlagueMain extends Plugin {
             }
         }
         return true;
+    }
+
+    String js(String script) {
+        return mods.getScripts().runConsole(script);
+    }
+
+    String formatTime(Duration dur) {
+        long hours = dur.toHours();
+        long mins = dur.toMinutesPart();
+        if (hours == 0) {
+            return String.format("[gold]%2d [accent]minute", mins) + (mins != 1 ? "s" : "");
+        }
+        return String.format("[gold]%d [accent]hour%s [gold]%2d [accent]minute%s",
+                hours, hours != 1 ? "s" : "", mins, mins != 1 ? "s" : "");
+    }
+
+    /** from seconds */
+    String formatTime(int dur) {
+        return formatTime(Duration.ofSeconds(dur));
+    }
+
+    /** from seconds */
+    String formatTime(long dur) {
+        return formatTime(Duration.ofSeconds(dur));
     }
 
     void initRules() {
@@ -1070,7 +1156,7 @@ public class PlagueMain extends Plugin {
         gameover = true;
 
         String[] keys = new String[] { "gamemode", "mapID" };
-        Object[] vals = new Object[] { "plague", mapID };
+        Object[] vals = new Object[] { "plague", state.map.file.name() };
         HashMap<String, Object> entries = db.loadRow("mindustry_map_data", keys, vals);
         long timeNow = seconds;
 
@@ -1079,8 +1165,7 @@ public class PlagueMain extends Plugin {
                 continue;
             Call.infoMessage(cPly.player.con, "[green]You survived the longest\n" +
                     (newRecord ? "    [gold]New record!\n" : "") +
-                    "[accent]Survive time: [scarlet]" + timeNow / 60 + "[accent] minutes and [scarlet]" +
-                    timeNow % 60 + "[accent] seconds.");
+                    "[accent]Survive time: " + formatTime(timeNow) + ".");
         }
 
         for (CustomPlayer cPly : teams.get(Team.malis).players) {
@@ -1217,9 +1302,8 @@ public class PlagueMain extends Plugin {
             firstRun = false;
         }
 
-        String mapID = state.map.file.name();
         String[] keys = new String[] { "gamemode", "mapID" };
-        Object[] vals = new Object[] { "plague", mapID };
+        Object[] vals = new Object[] { "plague", state.map.file.name() };
         if (!db.hasRow("mindustry_map_data", keys, vals)) {
             db.addEmptyRow("mindustry_map_data", keys, vals);
         }

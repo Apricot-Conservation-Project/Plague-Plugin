@@ -1,14 +1,18 @@
 package main;
 
 import arc.math.Mathf;
-import arc.struct.ObjectSet;
-import arc.struct.Seq;
+import arc.struct.ObjectMap;
+import arc.struct.*;
 import mindustry.content.*;
 import mindustry.maps.filters.*;
 import mindustry.type.*;
 import mindustry.world.Block;
 
 public class PlagueData {
+    /** block.emoji() wasnt working idk */
+    public static final ObjectMap<Block, Character> emojiMap = ObjectMap.of(Blocks.foreshadow, '', Blocks.cyclone, '',
+            Blocks.swarmer, '', Blocks.duo, '');
+
     public static final Seq<ItemStack> survivorLoadoutSerpulo = ItemStack.list(Items.copper, 3600, Items.lead, 3600,
             Items.graphite, 1800, Items.titanium, 1800, Items.silicon, 900, Items.metaglass, 900);
 
