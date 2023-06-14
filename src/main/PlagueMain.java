@@ -37,7 +37,7 @@ public class PlagueMain extends Plugin {
 
     private boolean firstRun = true;
     private boolean resetting = false;
-    private Seq<Player> destroyers = new Seq<>();
+    private final Seq<Player> destroyers = new Seq<>();
 
     private int teamsCount;
 
@@ -179,10 +179,7 @@ public class PlagueMain extends Plugin {
 
             // plague cant build banned blocks
             if (action.player.team() == Team.malis) {
-                if (hasWon ? PlagueData.plagueBanned.contains(action.block)
-                        : PlagueData.plagueBannedPreWin.contains(action.block))
-                    return false;
-                return true; // rest does not concern plague
+                return hasWon ? !PlagueData.plagueBanned.contains(action.block) : !PlagueData.plagueBannedPreWin.contains(action.block);// rest does not concern plague
             }
 
             // survivors cant build banned blocks
@@ -909,7 +906,7 @@ public class PlagueMain extends Plugin {
 
     /**
      * checks if a tile is build-upon-able
-     * https://github.com/Anuken/Mindustry/blob/d09f4c0db564137ccf71774abbdef25335e64168/core/src/mindustry/world/Build.java#LL181C1-L207C1
+     * <a href="https://github.com/Anuken/Mindustry/blob/d09f4c0db564137ccf71774abbdef25335e64168/core/src/mindustry/world/Build.java#LL181C1-L207C1">...</a>
      */
     boolean canPlace(Block type, Tile tile) {
         int offsetx = -(type.size - 1) / 2;
@@ -1032,8 +1029,8 @@ public class PlagueMain extends Plugin {
 
     }
 
-    String _leaderboardInit(int limit) {
-        return "[gold]no leaderboard cause i dont like the win based lb[white]";
+    String _leaderboardInit() {
+        return "This function should not be run. Leaderboard has been permanently disabled.";
     }
 
     void infect(CustomPlayer cPly, boolean remove) {
@@ -1194,10 +1191,6 @@ public class PlagueMain extends Plugin {
         db.saveRow("mindustry_data", "uuid", uuid, keys, vals);
     }
 
-    void endgame() {
-        endgame(new Seq<>(), new String[] {});
-    }
-
     void endgame(Seq<CustomPlayer> winners) {
         endgame(winners, new String[] {});
     }
@@ -1253,10 +1246,6 @@ public class PlagueMain extends Plugin {
         });
     }
 
-    void mapReset() {
-        mapReset(new String[] {});
-    }
-
     void mapReset(String[] args) {
         resetting = true;
 
@@ -1278,7 +1267,7 @@ public class PlagueMain extends Plugin {
         hasWon = false;
 
         resetRules();
-        leaderboardString = _leaderboardInit(5);
+        leaderboardString = _leaderboardInit();
 
         corePlaceInterval.reset();
         tenMinInterval.reset();
@@ -1289,11 +1278,11 @@ public class PlagueMain extends Plugin {
         resetting = false;
     }
 
-    void loadMap(String args[]) {
+    void loadMap(String[] args) {
         if (args.length > 0) {
             loadMap(Integer.parseInt(args[0]));
         } else {
-            if (firstRun == true) {
+            if (firstRun) {
                 mapIndex = new Random().nextInt();
             }
             mapIndex = ((mapIndex > 0 ? mapIndex : -mapIndex) + 1) % maps.customMaps().size;

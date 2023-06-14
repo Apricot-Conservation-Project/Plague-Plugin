@@ -11,15 +11,11 @@ import mindustry.world.blocks.environment.Floor;
 import mindustry.world.blocks.environment.OreBlock;
 import mindustry.world.blocks.environment.StaticWall;
 
-import java.util.stream.IntStream;
-
-import static mindustry.Vars.*;
+import static mindustry.Vars.maps;
 
 public class PlagueGenerator {
 
     public static final int size = 601;
-
-    public static final int[] a = IntStream.range(1, 100).toArray();
 
     public static void defaultOres(Tiles tiles, boolean isSerpulo) {
 

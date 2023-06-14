@@ -156,16 +156,4 @@ public class PlagueData {
                 slagOreFilter, arkyciteOreFilter,
                 ventFilter);
     }
-
-    public static int getRandomWithExclusion(int start, int end, int... exclude) {
-        int random = start + Mathf.random(end - start - exclude.length);
-        for (int ex : exclude) {
-            if (random < ex) {
-                break;
-            }
-            random++;
-        }
-        return random;
-    }
-
 }

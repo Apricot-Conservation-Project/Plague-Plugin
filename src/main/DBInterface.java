@@ -27,12 +27,12 @@ public class DBInterface {
     }
 
     public boolean hasRow(String table, String[] keys, Object[] vals) {
-        String sql = "SELECT * FROM " + table + " WHERE ";
+        StringBuilder sql = new StringBuilder("SELECT * FROM " + table + " WHERE ");
         for (int i = 0; i < keys.length; i++) {
-            sql += keys[i] + " = ?" + (i < keys.length - 1 ? " AND " : "");
+            sql.append(keys[i]).append(" = ?").append(i < keys.length - 1 ? " AND " : "");
         }
         try {
-            preparedStatement = conn.prepareStatement(sql);
+            preparedStatement = conn.prepareStatement(sql.toString());
             for (int i = 0; i < vals.length; i++) {
                 preparedStatement.setObject(i + 1, vals[i]);
             }
@@ -49,13 +49,13 @@ public class DBInterface {
         addEmptyRow(table, new String[] { key }, new Object[] { val });
     }
 
-    public void addEmptyRow(String table, String keys[], Object vals[]) {
+    public void addEmptyRow(String table, String[] keys, Object[] vals) {
         String sql = "INSERT INTO " + table + " (";
-        String keyString = "";
-        String valString = "";
+        StringBuilder keyString = new StringBuilder();
+        StringBuilder valString = new StringBuilder();
         for (int i = 0; i < keys.length; i++) {
-            keyString += keys[i] + (i < keys.length - 1 ? ", " : "");
-            valString += "? " + (i < keys.length - 1 ? ", " : "");
+            keyString.append(keys[i]).append(i < keys.length - 1 ? ", " : "");
+            valString.append("? ").append(i < keys.length - 1 ? ", " : "");
         }
         sql += keyString + ") VALUES(" + valString + ")";
         try {
@@ -69,23 +69,18 @@ public class DBInterface {
         }
     }
 
-    public HashMap<String, Object> loadRow(String table, String key, Object val) {
-        return loadRow(table, new String[] { key }, new Object[] { val });
-
-    }
-
-    public HashMap<String, Object> loadRow(String table, String keys[], Object vals[]) {
+    public HashMap<String, Object> loadRow(String table, String[] keys, Object[] vals) {
         HashMap<String, Object> returnedVals = new HashMap<String, Object>();
 
         if (!hasRow(table, keys, vals))
             addEmptyRow(table, keys, vals);
-        String sql = "SELECT * FROM " + table + " WHERE ";
+        StringBuilder sql = new StringBuilder("SELECT * FROM " + table + " WHERE ");
         for (int i = 0; i < keys.length; i++) {
-            sql += keys[i] + " = ?" + (i < keys.length - 1 ? " AND " : "");
+            sql.append(keys[i]).append(" = ?").append(i < keys.length - 1 ? " AND " : "");
         }
 
         try {
-            preparedStatement = conn.prepareStatement(sql);
+            preparedStatement = conn.prepareStatement(sql.toString());
             for (int i = 0; i < vals.length; i++) {
                 preparedStatement.setObject(i + 1, vals[i]);
             }
@@ -104,30 +99,21 @@ public class DBInterface {
 
     }
 
-    public void saveRow(String table, String searchKey, Object searchVal, String key, Object val) {
-        saveRow(table, new String[] { searchKey }, new Object[] { searchVal }, new String[] { key },
-                new Object[] { val });
-    }
-
-    public void saveRow(String table, String searchKey, Object searchVal, String keys[], Object vals[]) {
+    public void saveRow(String table, String searchKey, Object searchVal, String[] keys, Object[] vals) {
         saveRow(table, new String[] { searchKey }, new Object[] { searchVal }, keys, vals);
     }
 
-    public void saveRow(String table, String searchKeys[], Object searchVals[], String key, Object val) {
-        saveRow(table, searchKeys, searchVals, new String[] { key }, new Object[] { val });
-    }
-
-    public void saveRow(String table, String searchKeys[], Object searchVals[], String[] keys, Object[] vals) {
-        String sql = "UPDATE " + table + " SET ";
+    public void saveRow(String table, String[] searchKeys, Object[] searchVals, String[] keys, Object[] vals) {
+        StringBuilder sql = new StringBuilder("UPDATE " + table + " SET ");
         for (int i = 0; i < keys.length; i++) {
-            sql += keys[i] + " = ?" + (i < keys.length - 1 ? ", " : "");
+            sql.append(keys[i]).append(" = ?").append(i < keys.length - 1 ? ", " : "");
         }
-        sql += " WHERE ";
+        sql.append(" WHERE ");
         for (int i = 0; i < searchKeys.length; i++) {
-            sql += searchKeys[i] + " = ?" + (i < searchKeys.length - 1 ? " AND " : "");
+            sql.append(searchKeys[i]).append(" = ?").append(i < searchKeys.length - 1 ? " AND " : "");
         }
         try {
-            preparedStatement = conn.prepareStatement(sql);
+            preparedStatement = conn.prepareStatement(sql.toString());
             for (int i = 0; i < keys.length; i++) {
                 preparedStatement.setObject(i + 1, vals[i]);
             }
@@ -139,38 +125,5 @@ public class DBInterface {
             Log.err(e);
         }
 
-    }
-
-    public ResultSet customQuery(String query) {
-        try {
-            return conn.prepareStatement(query).executeQuery();
-        } catch (SQLException e) {
-            Log.err(e);
-        }
-        return null;
-    }
-
-    public void customUpdate(String update) {
-        try {
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate(update);
-            stmt.close();
-        } catch (SQLException e) {
-            Log.err(e);
-        }
-    }
-
-    // Large scale modifications
-
-    public void setColumn(String table, String col, Object value) {
-        // Sets an entire column to the provided value
-        try {
-            String sql = "UPDATE " + table + " SET " + col + " = ?";
-            preparedStatement = conn.prepareStatement(sql);
-            preparedStatement.setObject(1, value);
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            Log.err(e);
-        }
     }
 }
