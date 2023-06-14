@@ -37,6 +37,7 @@ public class PlagueMain extends Plugin {
 
     private boolean firstRun = true;
     private boolean resetting = false;
+    private Seq<Player> destroyers = new Seq<>();
 
     private int teamsCount;
 
@@ -485,6 +486,36 @@ public class PlagueMain extends Plugin {
 
         Events.on(EventType.TapEvent.class, event -> {
             final Team t = event.tile.team();
+            // comes from /destroy.
+            int index = destroyers.indexOf(event.player);
+            if (index != -1) {
+                destroyers.remove(index);
+                Player player = event.player;
+                if (event.tile.build == null) {
+                    player.sendMessage(String.format("[scarlet]No building at (%d, %d).", event.tile.x, event.tile.y));
+                    return;
+                }
+
+                // i would structure this admin || (all checks) but i want the error handling
+                if (player.admin) { // be admin (skip checks)
+                    event.tile.build.kill();
+                    return;
+                }
+                if (t != player.team()) { // of same team
+                    player.sendMessage("[scarlet]Can't break block of other team.");
+                    return;
+                }
+                // this feels unnecessary but whatever
+                CustomPlayer cPly = uuidMapping.get(player.uuid());
+                PlagueTeam pTeam = teams.get(cPly.team);
+                if (!pTeam.leader.player.uuid().equals(cPly.player.uuid())) { // be team leader
+                    player.sendMessage("[scarlet]You must be the team leader to destroy a block!");
+                    return;
+                }
+                event.tile.build.kill();
+                return;
+            };
+
             // @formatter:off
             if (
                 // plague team
@@ -627,33 +658,9 @@ public class PlagueMain extends Plugin {
             Call.infoMessage(player.con, mono_info);
         });
 
-        // destroy a building, must:
-        // either: be admin
-        // or: be team leader and destroy building of your team
-        handler.<Player>register("destroy", "<x> <y>", "Destroy a building", (args, player) -> {
-            int x = Integer.parseInt(args[0]);
-            int y = Integer.parseInt(args[1]);
-            Building build = world.build(x, y);
-            if (build == null) {
-                player.sendMessage(String.format("[accent]No building at (%d, %d)", x, y));
-                return;
-            }
-            // i would structure this admin || all checks but i want the error handling
-            if (player.admin) { // be admin (skip checks)
-                build.kill();
-                return;
-            }
-            if (build.team != player.team()) { // of same team
-                player.sendMessage("[accent]Can't break block of other team");
-                return;
-            }
-            CustomPlayer cPly = uuidMapping.get(player.uuid());
-            PlagueTeam pTeam = teams.get(cPly.team);
-            if (!pTeam.leader.player.uuid().equals(cPly.player.uuid())) { // be team leader
-                player.sendMessage("[accent]You must be team leader to destroy a block!");
-                return;
-            }
-            build.kill();
+        handler.<Player>register("destroy", "Destroy a building", (args, player) -> {
+            destroyers.add(player);
+            player.sendMessage("[accent]Tap the block you want to destroy.");
         });
 
         handler.<Player>register("multiplier", "The current damage & health multiplier", (_args, player) -> {
