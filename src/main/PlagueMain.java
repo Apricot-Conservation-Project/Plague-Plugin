@@ -25,6 +25,7 @@ import mindustry.type.Weapon;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.blocks.storage.CoreBlock;
 import mindustry.world.blocks.storage.CoreBlock.CoreBuild;
+import mindustry.world.blocks.storage.StorageBlock;
 import mindustry.world.blocks.units.Reconstructor;
 
 import java.text.DecimalFormat;
@@ -482,7 +483,7 @@ public class PlagueMain extends Plugin {
         });
 
         Events.on(EventType.TapEvent.class, event -> {
-            final Team t = event.tile.team();
+            final Team team = event.tile.team();
             // comes from /destroy.
             int index = destroyers.indexOf(event.player);
             if (index != -1) {
@@ -498,7 +499,7 @@ public class PlagueMain extends Plugin {
                     event.tile.build.kill();
                     return;
                 }
-                if (t != player.team()) { // of same team
+                if (team != player.team()) { // of same team
                     player.sendMessage("[scarlet]Can't break block of other team.");
                     return;
                 }
@@ -516,35 +517,41 @@ public class PlagueMain extends Plugin {
             // @formatter:off
             if (
                 // plague team
-                t == Team.malis
-                // it isnt a vault
+                team == Team.malis
+                // it isn't a vault
                 || event.tile.block() != (isSerpulo ? Blocks.vault : Blocks.reinforcedVault)
                 // player is tapping other teams vault
-                || event.player.team() != t
+                || event.player.team() != team
             ) return;
             // (?)
-            float dist = new Vec2(t.core().tile.x, t.core().tile.y).dst(new Vec2(event.tile.x, event.tile.y)) * (float)15.0;
-            int cost = Mathf.clamp((int)snap(dist, (float)500f), 1000, 10000);
+            float dist = new Vec2(team.core().tile.x, team.core().tile.y).dst(new Vec2(event.tile.x, event.tile.y)) * (float)15.0;
+            // return items from vault to core
+            team.core().items.add(event.tile.build.items);
+            // Except for the thorium
+            team.core().items.remove(Items.thorium, event.tile.build.items.get(Items.thorium));
+            // how much out of 1000 aint been paid yet
+            int necessaryThorium = 1000 - event.tile.build.items.get(Items.thorium);
+
+            // how much extra expensive core is by distance
+            double costRatio = Mathf.clamp((int)snap(dist, (float)500f), 1000, 10000) / 1000.0;
+            // the payment yet due from core, gets less efficient to pay this way with distance
+            int cost = (int)(necessaryThorium * costRatio);
             
             // not enough items
-            // if core items is 500, and vault items is 500, and cost is 1000, we can still make a core
-            int wallet = t.core().items.get(Items.thorium) + event.tile.build.items.get(Items.thorium);
+            int wallet = team.core().items.get(Items.thorium);
             if (wallet <= cost) {
-                // i could not for the life of me get Call.label to work.
-                event.player.sendMessage("[accent]Not enough [white][] to make a core. Needs [gold]" + -(wallet-cost) + "[] more [white][].");
+                // I could not for the life of me get Call.label to work.
+                event.player.sendMessage("[accent]Not enough [white][] to make a core. Needs [gold]" + (cost - wallet) + "[] more [white][].");
                 return;
             };
             // @formatter:on
-            // remove 1000 - vault items thorium
-            // if a vault is next to a core, its items are the teams thorium,
-            // so building a chain of cores is free. (1000 - thorium in core < 0 = true)
-            final int remove = cost - event.tile.build.items.get(Items.thorium);
-            if (remove > 0)
-                event.tile.team().core().items.remove(Items.thorium, remove);
+            // remove the thorium if non-core-adjacent vault
+            if (((StorageBlock.StorageBuild)event.tile.build).linkedCore == null)
+                event.tile.team().core().items.remove(Items.thorium, cost);
             // bastion is 4x4 so you get wierd results, use a shard.
             final Block core = Blocks.coreShard; // isSerpulo ? Blocks.coreShard : Blocks.coreBastion;
             // event.tile.build.tile to not move the core when the click isnt centered
-            event.tile.build.tile.setNet(core, t, 0);
+            event.tile.build.tile.setNet(core, team, 0);
         });
 
         Events.on(EventType.UnitDestroyEvent.class, event -> {
