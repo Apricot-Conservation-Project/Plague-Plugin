@@ -2,7 +2,7 @@ apply plugin: "java"
 
 version '4.10'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 1.9
 
 sourceSets.main.java.srcDirs = ["src"]
 
@@ -31,3 +31,4 @@ jar{
         include "plugin.json"
     }
 }
+targetCompatibility = JavaVersion.VERSION_1_9
