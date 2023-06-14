@@ -177,7 +177,7 @@ public class PlagueMain extends Plugin {
             if (action.block == null)
                 return true;
 
-            // plague cant buidl banned blocks
+            // plague cant build banned blocks
             if (action.player.team() == Team.malis) {
                 if (hasWon ? PlagueData.plagueBanned.contains(action.block)
                         : PlagueData.plagueBannedPreWin.contains(action.block))
@@ -485,7 +485,7 @@ public class PlagueMain extends Plugin {
 
         Events.on(EventType.TapEvent.class, event -> {
             final Team t = event.tile.team();
-        // @formatter:off
+            // @formatter:off
             if (
                 // plague team
                 t == Team.malis
@@ -500,7 +500,12 @@ public class PlagueMain extends Plugin {
             
             // not enough items
             // if core items is 500, and vault items is 500, and cost is 1000, we can still make a core
-            if (t.core().items.get(Items.thorium) + event.tile.build.items.get(Items.thorium) <= cost) return;
+            int wallet = t.core().items.get(Items.thorium) + event.tile.build.items.get(Items.thorium);
+            if (wallet <= cost) {
+                // i could not for the life of me get Call.label to work.
+                event.player.sendMessage("[accent]Not enough [white][] to make a core. Needs [gold]" + -(wallet-cost) + "[] more [white][].");
+                return;
+            };
             // @formatter:on
             // remove 1000 - vault items thorium
             // if a vault is next to a core, its items are the teams thorium,

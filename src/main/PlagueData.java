@@ -10,7 +10,7 @@ import mindustry.world.Block;
 
 public class PlagueData {
     public static final Seq<ItemStack> survivorLoadoutSerpulo = ItemStack.list(Items.copper, 3600, Items.lead, 3600,
-            Items.graphite, 1800, Items.titanium, 1800, Items.silicon, 900, Items.metaglass, 900);
+            Items.graphite, 1800, Items.titanium, 1800, Items.silicon, 900, Items.metaglass, 900, Items.thorium, 500);
 
     public static final Seq<ItemStack> survivorIncrementSerpulo = ItemStack.list(Items.copper, 500, Items.lead, 500);
 
