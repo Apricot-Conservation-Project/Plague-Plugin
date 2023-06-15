@@ -19,6 +19,7 @@ import mindustry.game.Team;
 import mindustry.game.Teams;
 import mindustry.gen.*;
 import mindustry.mod.Plugin;
+import mindustry.net.Administration.PlayerInfo;
 import mindustry.type.ItemStack;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
@@ -514,7 +515,8 @@ public class PlagueMain extends Plugin {
                 }
                 event.tile.build.kill();
                 return;
-            };
+            }
+            ;
 
             // @formatter:off
             if (
@@ -613,7 +615,14 @@ public class PlagueMain extends Plugin {
 
     @Override
     public void registerServerCommands(CommandHandler handler) {
-        handler.register("plague", "[map(index)]", "Host the plague game mode", args -> {
+        handler.removeCommand("maps");
+        handler.removeCommand("host");
+        handler.removeCommand("gameover");
+        handler.removeCommand("runwave");
+        handler.removeCommand("shuffle");
+        handler.removeCommand("nextmap");
+        handler.removeCommand("players");
+        handler.register("host", "[map(index)]", "Host the plague game mode", args -> {
             if (!Vars.state.is(GameState.State.menu)) {
                 Log.err("Stop the server first.");
                 return;
@@ -623,7 +632,27 @@ public class PlagueMain extends Plugin {
 
         });
 
-        handler.register("listmaps", "Lists maps with index(0: name)", _args -> {
+        handler.register("players", "List all players currently in game.", arg -> {
+            if (Groups.player.size() == 0) {
+                Log.info("No players are currently in the server.");
+            } else {
+                StringBuilder s = new StringBuilder();
+                for (Player user : Groups.player) {
+                    PlayerInfo userInfo = user.getInfo();
+                    s.append(userInfo.admin ? "[A]" : "[P]");
+                    s.append(' ');
+                    s.append(userInfo.plainLastName());
+                    s.append('/');
+                    s.append(userInfo.id);
+                    s.append('/');
+                    s.append(userInfo.lastIP);
+                    s.append('\n');
+                }
+                Log.info(s.toString());
+            }
+        });
+
+        handler.register("maps", "Lists maps with index(0: name)", _args -> {
             StringBuilder s = new StringBuilder();
             int i = 0;
             for (mindustry.maps.Map map : maps.customMaps()) {
@@ -633,7 +662,7 @@ public class PlagueMain extends Plugin {
             Log.info(s.toString());
         });
 
-        handler.register("endplague", "[map]", "End the plague game", args -> {
+        handler.register("gameover", "[map(index)]", "End the plague game", args -> {
             Call.sendMessage("[scarlet]server[accent] has ended the plague game. Ending in 10 seconds...");
             endgame(new Seq<>(), args);
         });
