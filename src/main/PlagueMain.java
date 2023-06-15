@@ -7,6 +7,7 @@ import arc.math.Mathf;
 import arc.struct.*;
 import arc.util.CommandHandler;
 import arc.util.Log;
+import arc.util.Nullable;
 import arc.util.Time;
 import mindustry.Vars;
 import mindustry.content.Blocks;
@@ -38,7 +39,19 @@ public class PlagueMain extends Plugin {
 
     private boolean firstRun = true;
     private boolean resetting = false;
-    private Seq<Player> destroyers = new Seq<>();
+    private final Seq<Player> destroyers = new Seq<>();
+    /**
+     * player 1 runs /teamjoin player2
+     * this adds a entry from player 2 to player 1
+     * player 2 is told that they can run /teaminvite to accept the request
+     * player 2 runs /teaminvite
+     * we search the invitations to find ourselves in the map.
+     * we add player 1 to player 2's team.
+     * if player2 runs /teamjoin, we switch the order of the key and value.
+     * its worth nothing that this means if multiple people /teamjoin player2,
+     * only the latest one gets selected.
+     */
+    private final HashMap<Player, Player> invitations = new HashMap<>();
 
     private int teamsCount;
 
@@ -516,7 +529,6 @@ public class PlagueMain extends Plugin {
                 event.tile.build.kill();
                 return;
             }
-            ;
 
             // @formatter:off
             if (
@@ -611,6 +623,35 @@ public class PlagueMain extends Plugin {
         // CustomPlayer cPly = uuidMapping.get(event.uuid);
         // cPly.hudEnabled = event.enabled;
         // });
+    }
+
+    @Nullable
+    Player find(String search, Player exclude) {
+        Player target = null;
+        try {
+            target = Groups.player.getByID(Integer.parseInt(search.replace("#", "")));
+        } catch (Exception _e) {
+            for (Player player : Groups.player) {
+                // c smh
+                if (player != exclude && player.plainName().compareToIgnoreCase(search) == 0) {
+                    target = player;
+                    break;
+                }
+            }
+        }
+        return target;
+    }
+
+    /** joins a to b */
+    void join(Player a, Player b) {
+        // join
+        a.team(b.team());
+        // update
+        uuidMapping.get(a.uuid()).team = b.team();
+        updatePlayer(a);
+        // explain
+        b.sendMessage(String.format("[accent]%s[accent] is on your team now.", a.name));
+        a.sendMessage(String.format("[accent]You have joined %s[accent]'s team.", b.name));
     }
 
     @Override
@@ -736,6 +777,120 @@ public class PlagueMain extends Plugin {
                             Core.app.getJavaHeap() / 1024 / 1024,
                             Groups.unit.size()));
             ;
+        });
+
+        // if no player specified, try and accept the request
+        handler.<Player>register("teaminvite", "[player]", "Invite a player to join your team.", (arg, self) -> {
+            if (arg.length == 0) {
+                // Teamjoin puts us as the key and them as the value.
+                Player them = invitations.remove(self);
+                if (them == null) {
+                    self.sendMessage(
+                            "[accent]Nobody asked to join. Perhaps you meant to invite somebody? Do so with /teaminvite friend");
+                    return;
+                }
+                if (them.team() == self.team()) {
+                    // will occur if blue does /teamjoin, then places a block,
+                    // then we run /teaminvite.
+                    self.sendMessage("[accent]You are on the same team now.");
+                    return;
+                }
+                join(them, self);
+                return;
+            }
+
+            // this function searches by name and by id.
+            Player target = find(arg[0], self);
+            if (target == null) {
+                self.sendMessage("[scarlet]Couldn't find player.");
+                return;
+            }
+
+            if (target.team() == self.team()) {
+                self.sendMessage(String.format("[accent]%s[accent] is on your team already.", target.name));
+                return;
+            }
+
+            // already invited
+            if (invitations.get(target) != null) {
+                // you only spam yourself
+                self.sendMessage(String.format("[accent]Invited %s[accent]."));
+                return;
+            }
+
+            // they have already asked to join.
+            if (invitations.remove(self) != null) {
+                join(target, self);
+                return;
+            }
+
+            self.sendMessage(String.format("[accent]Invited %s[accent].", target.name));
+            // if we invite somebody as plague just tell them to run /infect
+            target.sendMessage(
+                    String.format("[accent]Run %s to join [accent]%s[accent]'s team.",
+                            (self.team() == Team.malis ? "/infect" : "/teamjoin"), self.name));
+            if (self.team() != Team.malis)
+                invitations.put(target, self);
+        });
+        // the logic between these two functions is nearly identical,
+        // just different strings. if only java had macros.
+        // read above for comments.
+        handler.<Player>register("teamjoin", "[team/id]", "Join a team", (arg, self) -> {
+            if (arg.length == 0) {
+                Player them = invitations.remove(self);
+                if (them == null) {
+                    self.sendMessage(
+                            "[accent]Nobody invited you. Perhaps you meant to request to join somebody? Do so with /join friend.");
+                    return;
+                }
+
+                if (them.team() == self.team()) {
+                    self.sendMessage("[accent]You are on the same team now.");
+                    return;
+                }
+                join(self, them);
+                return;
+            }
+            Player target = find(arg[0], self);
+            if (target == null) {
+                try {
+                    // handle /teamjoin 7
+                    target = teams.get(Team.all[Integer.parseInt(arg[0])]).leader.player;
+                } catch (Exception _e) {
+                    self.sendMessage("[scarlet]Couldn't find player.");
+                    return;
+                }
+            }
+
+            if (target.team() == self.team()) {
+                self.sendMessage(String.format("You are already on [accent]%s[accent]'s team.", target.name));
+                return;
+            }
+
+            if (invitations.get(target) != null) {
+                self.sendMessage(String.format("[accent]Asked to join [accent]%s[accent].", target.name));
+                return;
+            }
+
+            if (invitations.remove(self) != null) {
+                join(self, target);
+                return;
+            }
+
+            // teamjoin exclusive code.
+            if (target.team() == Team.malis) {
+                if (teams.get(self.team()).players.size() == 1) {
+                    player.sendMessage("[accent]Run /infect to join. This will destroy your team.");
+                    return;
+                }
+                infect(uuidMapping.get(self.uuid()), true);
+                return;
+            }
+            self.sendMessage(String.format("[accent]Asked to join [accent]%s[accent].", target.name));
+            target.sendMessage(
+                    String.format("[accent]Run /teaminvite to let [accent]%s[accent] in to your team.",
+                            self.name));
+            invitations.put(target, self);
         });
 
         handler.<Player>register("turrets", "Count your turrets", (_arg, player) -> {
