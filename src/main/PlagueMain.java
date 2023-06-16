@@ -1,6 +1,7 @@
 package main;
 
 import arc.*;
+import arc.graphics.Color;
 import mindustry.world.*;
 import arc.math.geom.*;
 import arc.math.Mathf;
@@ -663,6 +664,7 @@ public class PlagueMain extends Plugin {
         handler.removeCommand("shuffle");
         handler.removeCommand("nextmap");
         handler.removeCommand("players");
+        handler.removeCommand("status");
         handler.register("host", "[map(index)]", "Host the plague game mode", args -> {
             if (!Vars.state.is(GameState.State.menu)) {
                 Log.err("Stop the server first.");
@@ -706,6 +708,11 @@ public class PlagueMain extends Plugin {
         handler.register("gameover", "[map(index)]", "End the plague game", args -> {
             Call.sendMessage("[scarlet]server[accent] has ended the plague game. Ending in 10 seconds...");
             endgame(new Seq<>(), args);
+        });
+
+        handler.register("status", "Server status", _arg -> {
+            Log.info("@ TPS / @ MB / @ PLAYERS", Core.graphics.getFramesPerSecond(),
+                    Core.app.getJavaHeap() / 1024 / 1024, Groups.player.size());
         });
     }
 
@@ -771,12 +778,17 @@ public class PlagueMain extends Plugin {
         });
 
         handler.<Player>register("status", "Server status", (_arg, player) -> {
+            // Color col = Color.red.cpy().lerp(Color.green,
+            // Core.graphics.getFramesPerSecond() / 60);
+            Color col = Seq.with(Color.green, Color.yellow, Color.orange, Color.red)
+                    .reverse()
+                    .get(Math.min(Core.graphics.getFramesPerSecond(), 60) / 20);
             player.sendMessage(
-                    String.format("[gold]%d[accent] TPS, [gold]%d[] MB used.\n\n[gold]%d[] units.",
+                    String.format("[#%s]%d[accent] TPS, [gold]%d[] MB used.\n\n[gold]%d[] units.",
+                            col.toString(),
                             Core.graphics.getFramesPerSecond(),
                             Core.app.getJavaHeap() / 1024 / 1024,
                             Groups.unit.size()));
-            ;
         });
 
         // if no player specified, try and accept the request
