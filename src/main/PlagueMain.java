@@ -15,6 +15,7 @@ import mindustry.content.Blocks;
 import mindustry.content.Items;
 import mindustry.content.UnitTypes;
 import mindustry.core.GameState;
+import mindustry.core.GameState.State;
 import mindustry.game.EventType;
 import mindustry.game.Rules;
 import mindustry.game.Team;
@@ -24,8 +25,9 @@ import mindustry.mod.Plugin;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.type.ItemStack;
 import mindustry.type.UnitType;
-import mindustry.type.Weapon;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
+import mindustry.world.blocks.defense.turrets.PowerTurret;
+import mindustry.world.blocks.defense.turrets.Turret.TurretBuild;
 import mindustry.world.blocks.storage.CoreBlock;
 import mindustry.world.blocks.storage.CoreBlock.CoreBuild;
 import mindustry.world.blocks.units.Reconstructor;
@@ -58,10 +60,7 @@ public class PlagueMain extends Plugin {
 
     private Rules rules;
 
-    private Seq<Weapon> polyWeapons;
-    private Seq<Weapon> megaWeapon;
     private Seq<Weapon> quadWeapon;
-    private Seq<Weapon> octWeapon;
 
     private final HashMap<UnitType, Float> originalUnitHealth = new HashMap<>();
 
@@ -95,8 +94,6 @@ public class PlagueMain extends Plugin {
     private int mapRecord;
     private int avgSurvived;
     private int mapPlays;
-
-    private String leaderboardString;
 
     private final DBInterface db = new DBInterface();
 
@@ -222,19 +219,21 @@ public class PlagueMain extends Plugin {
             return true;
         });
 
-        Events.run(EventType.Trigger.update, () ->
-
-        {
+        Events.run(EventType.Trigger.update, () -> {
             if (resetting || firstRun)
                 return;
             // Spawn player in core if they aren't
             if (pregame) {
                 for (Player player : Groups.player) {
-                    if (player.dead()) {
+                    if (player.dead())
                         CoreBlock.playerSpawn(world.tile((int) plagueCore.x, (int) plagueCore.y), player);
-                    }
                 }
             }
+
+            Team.malis.cores().forEach(c -> {
+                c.health(Float.MAX_VALUE);
+            });
+
             // Notification about placing a core, then starting game
             if (counts < pretime && corePlaceInterval.get(seconds)) {
 
@@ -251,7 +250,6 @@ public class PlagueMain extends Plugin {
                     teams.remove(Team.blue);
 
                     if (teams.size() == 1) {
-                        Log.info("No survs endgame, Count: " + counts);
                         endgame(new Seq<>());
                     } else {
                         Call.sendMessage(
@@ -296,10 +294,9 @@ public class PlagueMain extends Plugin {
                 // BUFF DA PLAGUE (enable air)
 
                 // So survivor megas can't do damage
-                UnitTypes.poly.weapons = polyWeapons;
-                UnitTypes.mega.weapons = megaWeapon;
+                UnitTypes.poly.weapons = new Seq<>();
+                UnitTypes.mega.weapons = new Seq<>();
                 UnitTypes.quad.weapons = quadWeapon;
-                UnitTypes.oct.weapons = octWeapon;
 
                 ((Reconstructor) Blocks.additiveReconstructor).upgrades = additiveFlare;
 
@@ -338,8 +335,10 @@ public class PlagueMain extends Plugin {
                 for (PlagueTeam team : teams.values()) {
                     if (team.monos > 0 && !team.team.cores().isEmpty()) {
                         CoreBuild core = team.team.core();
-                        core.items.add(Items.copper, team.monos);
-                        core.items.add(Items.lead, team.monos);
+                        if ((core.items.get(Items.lead) + team.monos) < core.storageCapacity)
+                            core.items.add(Items.lead, team.monos);
+                        if ((core.items.get(Items.copper) + team.monos) < core.storageCapacity)
+                            core.items.add(Items.copper, team.monos);
                     }
                 }
             }
@@ -471,30 +470,38 @@ public class PlagueMain extends Plugin {
         });
 
         Events.on(EventType.BlockDestroyEvent.class, event -> {
-            if (event.tile.block() instanceof CoreBlock && event.tile.team().cores().size == 1) {
-                Team deadTeam = event.tile.team();
-                Seq<CustomPlayer> winners = new Seq<>();
-                Log.info("Dead team to infect: " + deadTeam);
-                if (!teams.containsKey(deadTeam)) {
-                    Call.sendMessage(
-                            "Welp that's not supposed to happen... Let [purple]me[white] know what just happened and what caused this"
-                                    +
-                                    " message to appear");
+            if (event.tile.block() instanceof CoreBlock) {
+                if (event.tile.team() == Team.malis) {
+                    // Call.setTile(event.tile, event.tile.block(), Team.malis, 0)
+                    // world.tiles.getc(event.tile.x, event.tile.y).build.health = Float.MAX_VALUE;
+                    Call.sendMessage("[scarlet]stahp killing plague >:(");
                     return;
                 }
-                for (CustomPlayer cPly : teams.get(deadTeam).players) {
-                    if (teams.size() == 2 && cPly.connected) {
-                        winners.add(cPly);
+                if (event.tile.team().cores().size == 1) {
+                    Team deadTeam = event.tile.team();
+                    Seq<CustomPlayer> winners = new Seq<>();
+                    Log.info("Dead team to infect: " + deadTeam);
+                    if (!teams.containsKey(deadTeam)) {
+                        Call.sendMessage(
+                                "Welp that's not supposed to happen... Let [purple]me[white] know what just happened and what caused this"
+                                        +
+                                        " message to appear");
+                        return;
                     }
-                    infect(cPly, false);
-                }
+                    for (CustomPlayer cPly : teams.get(deadTeam).players) {
+                        if (teams.size() == 2 && cPly.connected) {
+                            winners.add(cPly);
+                        }
+                        infect(cPly, false);
+                    }
 
-                killTiles(deadTeam);
+                    killTiles(deadTeam);
 
-                teams.remove(deadTeam);
-                if (teams.size() == 1) {
-                    Log.info("Dead block endgame");
-                    endgame(winners);
+                    teams.remove(deadTeam);
+                    if (teams.size() == 1) {
+                        Log.info("Dead block endgame");
+                        endgame(winners);
+                    }
                 }
             }
         });
@@ -648,8 +655,20 @@ public class PlagueMain extends Plugin {
         // join
         a.team(b.team());
         // update
-        uuidMapping.get(a.uuid()).team = b.team();
+        CustomPlayer aply = uuidMapping.get(a.uuid());
+        PlagueTeam aTeam = teams.get(a.team());
+        // tried to use if let lol
+        if (aTeam != null)
+            aTeam.removePlayer(aply);
+        if (!PlagueData.transferUnits.contains(a.unit().type))
+            a.clearUnit();
+        if (aTeam.players.size() == 0) {
+            aTeam.locked = true;
+            killTiles(aTeam.team);
+        }
+        a.team(b.team());
         updatePlayer(a);
+        teams.get(b.team()).addPlayer(aply);
         // explain
         b.sendMessage(String.format("[accent]%s[accent] is on your team now.", a.name));
         a.sendMessage(String.format("[accent]You have joined %s[accent]'s team.", b.name));
@@ -793,6 +812,10 @@ public class PlagueMain extends Plugin {
 
         // if no player specified, try and accept the request
         handler.<Player>register("teaminvite", "[player]", "Invite a player to join your team.", (arg, self) -> {
+            if (self.team() == Team.blue) {
+                self.sendMessage("[accent]Cannot invite to scout team");
+                return;
+            }
             if (arg.length == 0) {
                 // Teamjoin puts us as the key and them as the value.
                 Player them = invitations.remove(self);
@@ -810,7 +833,6 @@ public class PlagueMain extends Plugin {
                 join(them, self);
                 return;
             }
-
             // this function searches by name and by id.
             Player target = find(arg[0], self);
             if (target == null) {
@@ -826,7 +848,7 @@ public class PlagueMain extends Plugin {
             // already invited
             if (invitations.get(target) != null) {
                 // you only spam yourself
-                self.sendMessage(String.format("[accent]Invited %s[accent]."));
+                self.sendMessage(String.format("[accent]Invited %s[accent].", target.name));
                 return;
             }
 
@@ -873,6 +895,10 @@ public class PlagueMain extends Plugin {
                     return;
                 }
             }
+            if (target.team() == Team.blue) {
+                self.sendMessage("[accent]Cannot join scout team");
+                return;
+            }
 
             if (target.team() == self.team()) {
                 self.sendMessage(String.format("You are already on [accent]%s[accent]'s team.", target.name));
@@ -914,29 +940,23 @@ public class PlagueMain extends Plugin {
                 player.sendMessage("[accent]Become a survivor first.");
                 return;
             }
-            ObjectMap<Block, Integer> builds = new ObjectMap<>();
-            for (Building b : Groups.build) {
-                if (b.team == player.team()) {
-                    if (b.block == Blocks.foreshadow || b.block == Blocks.cyclone || b.block == Blocks.swarmer
-                            || b.block == Blocks.duo) {
-                        builds.put(b.block, builds.get(b.block, 0) + 1);
-                    }
-                }
-            }
-            if (builds.size == 0) {
+            HashMap<Block, Integer> builds = new HashMap<>();
+            for (Building b : Groups.build)
+                if (b.team == player.team() && b instanceof TurretBuild)
+                    builds.put(b.block, builds.getOrDefault(b.block, 0) + 1);
+            if (builds.size() == 0) {
                 player.sendMessage("[accent]You have no turrets. How are you alive?");
                 return;
             }
             StringBuilder s = new StringBuilder("[accent]");
-
-            for (ObjectMap.Entry<Block, Integer> e : builds) {
-                s.append("[white]");
-                s.append(PlagueData.emojiMap.get(e.key));
-                // s.append(e.key.emoji());
-                s.append("[gold]");
-                s.append(e.value);
-                s.append("[accent]\n");
-            }
+            builds.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).limit(10)
+                    .forEach(e -> {
+                        s.append("[white]");
+                        s.append(e.getKey().emoji());
+                        s.append("[gold]");
+                        s.append(e.getValue());
+                        s.append("[accent]\n");
+                    });
             player.sendMessage(s.toString());
         });
 
@@ -966,10 +986,6 @@ public class PlagueMain extends Plugin {
 
         handler.<Player>register("time", "Display the time now", (args, player) -> {
             player.sendMessage("[accent]Time: " + formatTime(Duration.ofSeconds(seconds)));
-        });
-
-        handler.<Player>register("leaderboard", "Display the leaderboard", (args, player) -> {
-            player.sendMessage(leaderboardString);
         });
 
         handler.<Player>register("rules", "Display the rules", (args, player) -> {
@@ -1176,10 +1192,7 @@ public class PlagueMain extends Plugin {
          * UnitTypes.gamma.health = 1f;
          */
 
-        polyWeapons = UnitTypes.poly.weapons.copy();
-        megaWeapon = UnitTypes.mega.weapons.copy();
         quadWeapon = UnitTypes.quad.weapons.copy();
-        octWeapon = UnitTypes.oct.weapons.copy();
 
         UnitTypes.flare.weapons = new Seq<>();
 
@@ -1203,6 +1216,7 @@ public class PlagueMain extends Plugin {
         additiveNoFlare = ((Reconstructor) Blocks.additiveReconstructor).upgrades.copy();
 
         ((ItemTurret) Blocks.foreshadow).ammoTypes.get(Items.surgeAlloy).buildingDamageMultiplier = 0;
+        ((PowerTurret) Blocks.malign).shootType.buildingDamageMultiplier = 0;
 
         for (int i = 0; i < maps.customMaps().size; i++) {
             rotation.add(i);
@@ -1211,11 +1225,9 @@ public class PlagueMain extends Plugin {
     }
 
     void resetRules() {
-
         UnitTypes.poly.weapons = new Seq<>();
         UnitTypes.mega.weapons = new Seq<>();
         UnitTypes.quad.weapons = new Seq<>();
-        UnitTypes.oct.weapons = new Seq<>();
 
         ((Reconstructor) Blocks.additiveReconstructor).upgrades = additiveNoFlare;
 
@@ -1226,11 +1238,6 @@ public class PlagueMain extends Plugin {
         }
 
         state.rules.unitDamageMultiplier = 1;
-
-    }
-
-    String _leaderboardInit(int limit) {
-        return "[gold]no leaderboard cause i dont like the win based lb[white]";
     }
 
     void infect(CustomPlayer cPly, boolean remove) {
@@ -1304,12 +1311,8 @@ public class PlagueMain extends Plugin {
         updatePlayer(player);
 
         cPly.connected = true;
-
-        if (player.team() == Team.blue) {
+        if (player.team() == Team.blue)
             CoreBlock.playerSpawn(world.tile((int) plagueCore.x, (int) plagueCore.y), player);
-        }
-
-        player.sendMessage(leaderboardString);
 
         if (cPly.playTime < 60) {
             Call.infoMessage(player.con, info);
@@ -1444,8 +1447,6 @@ public class PlagueMain extends Plugin {
             db.saveRow("mindustry_map_data", keys, vals,
                     new String[] { "survivorRecord", "avgSurvived", "plays" },
                     new Object[] { finalSurvivorRecord, finalAvgSurvived, finalPlays });
-
-            Log.info("Game ended successfully.");
             mapReset(map);
         });
     }
@@ -1475,7 +1476,6 @@ public class PlagueMain extends Plugin {
         hasWon = false;
 
         resetRules();
-        leaderboardString = _leaderboardInit(5);
 
         corePlaceInterval.reset();
         tenMinInterval.reset();
@@ -1524,7 +1524,7 @@ public class PlagueMain extends Plugin {
 
         // Make cores and power source indestructible
         Team.malis.cores().each(coreBuild -> {
-            coreBuild.health = Float.MAX_VALUE;
+            coreBuild.health(Float.MAX_VALUE);
             coreBuild.items.clear();
         });
         isSerpulo = PlagueData.serpuloCores.contains(Team.malis.cores().get(0).block);
@@ -1561,8 +1561,8 @@ public class PlagueMain extends Plugin {
 
         teams.put(Team.malis, new PlagueTeam(Team.malis));
         teams.put(Team.blue, new PlagueTeam(Team.blue));
-        logic.play();
-
+        state.set(State.playing);
+        Events.fire(new EventType.PlayEvent());
         for (Player player : players) {
             Call.worldDataBegin(player.con);
             netServer.sendWorldData(player);
@@ -1570,8 +1570,5 @@ public class PlagueMain extends Plugin {
 
             loadPlayer(player);
         }
-
-        Log.info("Done");
-
     }
 }

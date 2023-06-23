@@ -1,7 +1,6 @@
 package main;
 
 import arc.struct.Seq;
-import arc.util.Log;
 import mindustry.content.Blocks;
 import mindustry.maps.filters.GenerateFilter;
 import mindustry.maps.filters.GenerateFilter.GenerateInput;
@@ -26,7 +25,6 @@ public class PlagueGenerator {
         Seq<GenerateFilter> filters = new Seq<>();
         int seedOffset = (int) System.currentTimeMillis();
         if (isSerpulo) { // Serpulo ores
-            Log.info("Serpulo map");
             maps.addDefaultOres(filters);
 
             for (GenerateFilter o : filters) {
