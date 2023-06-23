@@ -1530,7 +1530,7 @@ public class PlagueMain extends Plugin {
         });
         isSerpulo = PlagueData.serpuloCores.contains(Team.malis.cores().get(0).block);
         world.tiles.forEach(t -> {
-            if (t.build != null && t.build.block.equals(Blocks.powerSource) && t.team() == Team.malis)
+            if (t.build != null && t.build.block.equals(Blocks.powerSource) && t.build.team() == Team.malis)
                 t.build.health = Float.MAX_VALUE;
         });
         plagueCore = new Vec2(map.width / 2, map.height / 2); // center
