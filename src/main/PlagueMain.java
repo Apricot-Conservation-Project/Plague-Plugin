@@ -220,7 +220,6 @@ public class PlagueMain extends Plugin {
             for (int i = 0; i < Team.malis.cores().size; i ++) {
                 CoreBuild plagueCore = Team.malis.cores().get(i);
                 float distanceToCore = new Vec2(action.tile.x, action.tile.y).dst(plagueCore);
-                // f*** s*** up if you try to build a core within a quarter of the world size
                 if (distanceToCore < coringDistance && action.player.team() != Team.malis) {
                     action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!\n" +
                             "The limit is " + coringDistance + " tiles");
