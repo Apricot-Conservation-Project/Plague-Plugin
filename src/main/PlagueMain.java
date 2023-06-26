@@ -217,7 +217,8 @@ public class PlagueMain extends Plugin {
             int coringDistance = (int) (Math.sqrt(world.height() * world.width()) * 0.25);
             // Blocks placement if player is survivor and attempting to place a core
             // creation block, and that block is too close to any plague core
-            Team.malis.cores().each(plagueCore -> {
+            for (int i = 0; i < Team.malis.cores().size; i ++) {
+                CoreBuild plagueCore = Team.malis.cores().get(i);
                 float distanceToCore = new Vec2(action.tile.x, action.tile.y).dst(plagueCore);
                 if (distanceToCore < coringDistance) {
                     action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!");
