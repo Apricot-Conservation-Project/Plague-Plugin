@@ -209,12 +209,20 @@ public class PlagueMain extends Plugin {
                     && action.block != (isSerpulo ? Blocks.vault : Blocks.reinforcedVault))
                 return true;
 
-            float distanceToCore = new Vec2(action.tile.x, action.tile.y).dst(plagueCore);
+            // Calculate the distance to a plague core within which cores cannot be built
+            // Geometric mean for area-based quality
+            int coringDistance = (int) (Math.sqrt(world.height() * world.width()) * 0.25);
             // Blocks placement if player is survivor and attempting to place a core
-            // creation block, and that block is too close to plague core
-            if (distanceToCore < world.height() / 3.6 && action.player.team() != Team.malis) {
-                action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!");
-                return false;
+            // creation block, and that block is too close to any plague core
+            for (int i = 0; i < Team.malis.cores().size; i ++) {
+                CoreBuild plagueCore = Team.malis.cores().get(i);
+                float distanceToCore = new Vec2(action.tile.x, action.tile.y).dst(plagueCore);
+                // f*** s*** up if you try to build a core within a quarter of the world size
+                if (distanceToCore < coringDistance && action.player.team() != Team.malis) {
+                    action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!\n" +
+                            "The limit is " + coringDistance + " tiles");
+                    return false;
+                }
             }
 
             return true;
@@ -227,7 +235,7 @@ public class PlagueMain extends Plugin {
             if (pregame) {
                 for (Player player : Groups.player) {
                     if (player.dead())
-                        CoreBlock.playerSpawn(world.tile((int) plagueCore.x, (int) plagueCore.y), player);
+                        CoreBlock.playerSpawn(Team.malis.core().tile, player);
                 }
             }
 
@@ -1313,7 +1321,7 @@ public class PlagueMain extends Plugin {
 
         cPly.connected = true;
         if (player.team() == Team.blue)
-            CoreBlock.playerSpawn(world.tile((int) plagueCore.x, (int) plagueCore.y), player);
+            CoreBlock.playerSpawn(Team.malis.core().tile, player);
 
         if (cPly.playTime < 60) {
             Call.infoMessage(player.con, info);
@@ -1501,7 +1509,7 @@ public class PlagueMain extends Plugin {
 
     /**
      * overloading my beloved
-     * 
+     *
      * @param map the map index out of the current maps, view with `listmaps`
      */
     void loadMap(int map) {
@@ -1533,7 +1541,6 @@ public class PlagueMain extends Plugin {
             if (t.build != null && t.build.block.equals(Blocks.powerSource) && t.team() == Team.malis)
                 t.build.health = Float.MAX_VALUE;
         });
-        plagueCore = new Vec2(map.width / 2, map.height / 2); // center
         world.beginMapLoad();
         PlagueGenerator.defaultOres(world.tiles, isSerpulo);
 
