@@ -3,6 +3,7 @@ package main;
 import mindustry.game.Team;
 
 import java.util.ArrayList;
+import base.CustomPlayer;
 
 public class PlagueTeam {
     protected Team team;

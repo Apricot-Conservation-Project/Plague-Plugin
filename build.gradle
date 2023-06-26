@@ -2,7 +2,7 @@ apply plugin: "java"
 
 version '4.10'
 
-sourceCompatibility = 1.9
+sourceCompatibility = JavaVersion.VERSION_17
 
 sourceSets.main.java.srcDirs = ["src"]
 
@@ -18,10 +18,11 @@ ext{
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
-    implementation 'mysql:mysql-connector-java:8.0.12'
+    implementation "com.github.Apricot-Conservation-Project:base:e67042d"
 }
 
 jar{
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     archiveFileName = "${project.archivesBaseName}.jar"
     from{
         configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}
