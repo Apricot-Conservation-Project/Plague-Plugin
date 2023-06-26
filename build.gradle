@@ -32,4 +32,3 @@ jar{
         include "plugin.json"
     }
 }
-targetCompatibility = JavaVersion.VERSION_1_9
