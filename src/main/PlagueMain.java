@@ -223,7 +223,7 @@ public class PlagueMain extends Plugin {
                     action.player.sendMessage("[scarlet]Cannot place core/vault that close to plague!");
                     return false;
                 }
-            });
+            }
             return true;
         });
 
