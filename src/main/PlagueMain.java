@@ -399,7 +399,7 @@ public class PlagueMain extends Plugin {
                 base.historyHandler.addEntry(event.tile.x, event.tile.y,
                         "[green] + [accent]" + player.name + "[accent]: created a team and built a core");
             } else {
-                base.historyHandler.addEntry(event.tile.build.tile.x, event.tile.build.tile.y,
+                base.historyHandler.addEntry(event.tile.x, event.tile.y,
                         "[green] + [accent]" + player.name + "[accent]: built a core, joining team #" + chosenTeam.id);
             }
 
