@@ -55,6 +55,10 @@ public class PlagueData {
     static {
         plagueBanned = ObjectSet.with(turrets.toSeq());
         plagueBanned.addAll(
+                Blocks.berylliumWall, Blocks.berylliumWallLarge, Blocks.tungstenWall, Blocks.tungstenWallLarge,
+                Blocks.blastDoor, Blocks.reinforcedSurgeWall, Blocks.reinforcedSurgeWallLarge, Blocks.carbideWall,
+                Blocks.carbideWallLarge, Blocks.shieldedWall);
+        plagueBanned.addAll(
                 Blocks.battery, Blocks.batteryLarge, Blocks.combustionGenerator, Blocks.thermalGenerator,
                 Blocks.steamGenerator, Blocks.differentialGenerator, Blocks.rtgGenerator, Blocks.solarPanel,
                 Blocks.largeSolarPanel, Blocks.thoriumReactor, Blocks.impactReactor,
