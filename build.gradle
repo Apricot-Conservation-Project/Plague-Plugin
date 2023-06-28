@@ -8,6 +8,7 @@ sourceSets.main.java.srcDirs = ["src"]
 
 repositories{
     mavenCentral()
+    maven{ url "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository" }
     maven{ url 'https://www.jitpack.io' }
 }
 ext{
@@ -18,7 +19,7 @@ ext{
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
-    implementation "com.github.Apricot-Conservation-Project:base:e67042d"
+    implementation "com.github.Apricot-Conservation-Project:base:c045d1f"
 }
 
 jar{
