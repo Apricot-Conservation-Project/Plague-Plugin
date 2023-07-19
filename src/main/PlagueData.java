@@ -87,7 +87,11 @@ public class PlagueData {
             {
                 ore = Blocks.wallOreBeryllium;
                 seed = seedOffset[0]++;
-                threshold = 0.83f;
+                threshold = 0.77f;
+                scl = 24.95f;
+                octaves = 1f;
+                falloff = 1f;
+                tilt = 0.24f;
             }
         };
 
