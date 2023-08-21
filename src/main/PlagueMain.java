@@ -435,8 +435,12 @@ public class PlagueMain extends Plugin {
                         Groups.player.each((player) -> {
                             if (player.team() == Team.malis) {
                                 var cPly = Base.uuidMapping.get(player.uuid());
-                                cPly.addXP(400, "[accent]+[scarlet]400xp[] for infecting survivors"
-                                        + (!hasWon ? " [gold] before the win time!" : "!"));
+                                if (!hasWon) {
+                                    cPly.addXP(1000,
+                                            "[accent]+[scarlet]1000xp[] for infecting survivors [gold]before the win time!");
+                                } else {
+                                    cPly.addXP(500, "[accent]+[scarlet]500xp[] for infecting survivors");
+                                }
                             }
                         });
                     }
@@ -450,6 +454,13 @@ public class PlagueMain extends Plugin {
                     for (CustomPlayer cPly : teams.get(deadTeam).players) {
                         if (teams.size() == 2 && cPly.connected) {
                             winners.add(cPly);
+                            Call.infoMessage(cPly.player.con, "[green]You survived the longest\n" +
+                                    (newRecord ? "    [gold]New record!\n" : "") +
+                                    "[accent]Survive time: " + Base.formatTime(base.seconds) + ".");
+                            int addXP = Math.min((int) (200.0 * multiplier), 20000);
+                            cPly.addXP(addXP, "[accent]+[scarlet]" + addXP + "xp[] for surviving the longest!");
+                            if (newRecord)
+                                cPly.addXP(30000, "[accent]+[scarlet]30k xp[] for setting a new record!");
                         }
                         infect(cPly, false);
                     }
@@ -458,6 +469,14 @@ public class PlagueMain extends Plugin {
                         Log.info("Dead block endgame");
                         endgame(winners);
                     }
+                } else if (!pregame) {
+                    Groups.player.each((player) -> {
+                        if (player.team() == Team.malis) {
+                            var cPly = Base.uuidMapping.get(player.uuid());
+                            cPly.addXP(hasWon ? 200 : 600, String.format(
+                                    "[accent]+[scarlet]%dxp[] for killing a core!", hasWon ? 200 : 600), true);
+                        }
+                    });
                 }
             }
         });
@@ -571,6 +590,7 @@ public class PlagueMain extends Plugin {
                         5f, event.spawner.tileX() * 8, event.spawner.tileY() * 8);
             } else if (event.unit.type == UnitTypes.mono) {
                 PlagueTeam team = teams.get(event.unit.team);
+                if (team == null) return;
                 if (team.monos == MONO_LIMIT && !team.reached_cap) {
                     team.reached_cap = true;
                     team.players.forEach((p) -> {
@@ -1234,19 +1254,6 @@ public class PlagueMain extends Plugin {
         Object[] vals = new Object[] { "plague", state.map.file.name() };
         HashMap<String, Object> entries = db.loadRow("mindustry_map_data", keys, vals);
         long timeNow = base.seconds;
-
-        for (CustomPlayer cPly : winners) {
-            if (!cPly.connected)
-                continue;
-            Call.infoMessage(cPly.player.con, "[green]You survived the longest\n" +
-                    (newRecord ? "    [gold]New record!\n" : "") +
-                    "[accent]Survive time: " + Base.formatTime(timeNow) + ".");
-            int addXP = Math.min((int) (200.0 * multiplier), 20000);
-            cPly.addXP(addXP, "[accent]+[scarlet]" + addXP + "xp[] for surviving the longest!");
-            if (newRecord) {
-                cPly.addXP(30000, "[accent]+[scarlet]30k xp[] for setting a new record!");
-            }
-        }
 
         for (CustomPlayer cPly : teams.get(Team.malis).players) {
             if (!winners.contains(cPly)) {

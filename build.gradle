@@ -13,13 +13,13 @@ repositories{
 }
 ext{
     //the build number that this plugin is made for
-    mindustryVersion = 'v145'
+    mindustryVersion = 'v146'
 }
 
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
-    implementation "com.github.Apricot-Conservation-Project:base:f5132a2"
+    implementation "com.github.Apricot-Conservation-Project:base:1732094"
 }
 
 jar{
