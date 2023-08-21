@@ -34,9 +34,6 @@ public class PlagueData {
             Blocks.ductBridge, Blocks.ductRouter, Blocks.ductUnloader, Blocks.armoredDuct);
 
     public static final ObjectSet<Block> survivorBanned = ObjectSet.with(Blocks.groundFactory, Blocks.navalFactory,
-            Blocks.logicDisplay, Blocks.largeLogicDisplay, Blocks.canvas, // Blocks.microProcessor,
-                                                                          // Blocks.logicProcessor,
-                                                                          // Blocks.hyperProcessor,
             Blocks.exponentialReconstructor, Blocks.tetrativeReconstructor,
             Blocks.shipAssembler, Blocks.mechAssembler, Blocks.tankAssembler, Blocks.tankFabricator,
             Blocks.shipFabricator,

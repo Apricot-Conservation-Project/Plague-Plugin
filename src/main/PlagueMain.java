@@ -76,12 +76,11 @@ public class PlagueMain extends Plugin {
 
     private final RTInterval corePlaceInterval = new RTInterval(20);
     private final RTInterval tenMinInterval = new RTInterval(60 * 10);
-    private final RTInterval oneMinInterval = new RTInterval(60);
 
     private float multiplier;
     private static final DecimalFormat df = new DecimalFormat("0.00");
 
-    private final int winTime = 45; // In minutes
+    private final int winTime = 60; // In minutes
 
     private float realTime = 0f;
     private static long startTime;
@@ -95,7 +94,10 @@ public class PlagueMain extends Plugin {
     private int mapPlays;
 
     private final DBInterface db = new DBInterface();
-    private final Base base = new Base(db);
+    private final Base base = new Base(db, () -> {
+        return "[accent]Time survived: [orange]" + Base.formatTime(Base.seconds) + "[accent].\n" +
+                "All-time record: [gold]" + Base.formatTime(mapRecord) + "[accent].\n\nDisable hud with [scarlet]/hud";
+    });
 
     private boolean isSerpulo = true;
 
@@ -112,7 +114,7 @@ public class PlagueMain extends Plugin {
             " the [scarlet]Plague [accent]and [green]Survivors[accent].\n\n" +
             "The [scarlet]Plague[accent] build up their economy to make the biggest army possible, and try to" +
             " break through the [green]Survivors[accent] defenses.\n\n" +
-            "The [green]Survivors[accent] build up a huge defense and last 45 minutes to win.\n\n" +
+            "The [green]Survivors[accent] build up a huge defense and last 60 minutes to win.\n\n" +
             "To become a " +
             "[green]Survivor[accent], you must place a core in the first 2 minutes of the game, where you are " +
             "allowed to choose your team. Place any block to place a core at the start of the game.\n\n" +
@@ -129,16 +131,12 @@ public class PlagueMain extends Plugin {
          * `banReason` varchar(200) DEFAULT NULL,
          * PRIMARY KEY (`ip`,`uuid`)
          * );
-         * CREATE TABLE `data` (
-         * `userID` int NOT NULL AUTO_INCREMENT,
-         * `username` varchar(20) DEFAULT NULL,
-         * `password` varchar(20) DEFAULT NULL,
-         * PRIMARY KEY (`userID`)
-         * );
          * CREATE TABLE `mindustry_data` (
          * `uuid` varchar(40) NOT NULL,
          * `playTime` int DEFAULT '0',
          * `userID` int DEFAULT NULL,
+         * `xp` int DEFAULT '0',
+         * `wins` int DEFAULT '0',
          * `latestName` varchar(40) DEFAULT '',
          * `adminRank` int DEFAULT '0',
          * `hudOn` tinyint(1) DEFAULT '1',
@@ -230,7 +228,7 @@ public class PlagueMain extends Plugin {
                     pregame = false;
                     for (Player ply : Groups.player) {
                         if (ply.team() == Team.blue) {
-                            infect(base.uuidMapping.get(ply.uuid()), true);
+                            infect(Base.uuidMapping.get(ply.uuid()), true);
                             updatePlayer(ply);
                         }
                     }
@@ -260,8 +258,10 @@ public class PlagueMain extends Plugin {
             base.seconds = (int) (realTime / 1000);
 
             // Runs if survivors hit win condition
+            boolean justWon = false;
             if (!gameover && !hasWon && base.seconds > winTime * 60) {
                 hasWon = true;
+                justWon = true;
                 Groups.player.each((player) -> {
                     if (player.team() == Team.malis) {
                         Call.infoMessage(player.con,
@@ -272,6 +272,12 @@ public class PlagueMain extends Plugin {
                                 "All civilians have been evacuated, and the inhibitors have been launched!" +
                                         "The plague are now extremely powerful and will only get worse. Defend the noble few for as long as possible!");
                         player.sendMessage("[gold]You win![accent]");
+                        CustomPlayer cPly = Base.uuidMapping.get(player.uuid());
+                        cPly.wins++;
+                        player.sendMessage(
+                                "[gold]+1 wins[accent] for a total of [gold]" + cPly.wins + "[accent] wins!");
+                        int addXp = player.admin ? 6000 : 3000;
+                        cPly.addXP(addXp, "[accent]+[scarlet]" + addXp + "xp[accent] for winning!");
                     }
 
                     updatePlayer(player);
@@ -300,7 +306,7 @@ public class PlagueMain extends Plugin {
             if (tenMinInterval.get(base.seconds)) {
                 float multiplyBy = hasWon ? 1.4f : 1.2f;
                 multiplier *= multiplyBy;
-                state.rules.unitDamageMultiplier = multiplier;
+                // state.rules.unitDamageMultiplier = multiplier;
 
                 for (UnitType u : Vars.content.units()) {
                     if (u != UnitTypes.alpha && u != UnitTypes.beta && u != UnitTypes.gamma) {
@@ -308,18 +314,20 @@ public class PlagueMain extends Plugin {
                     }
                 }
                 String percent = "" + Math.round((multiplyBy - 1) * 100);
-                Call.sendMessage("[accent]Units now deal [scarlet]" + percent + "%[accent] more damage and have " +
+                Call.sendMessage("[accent]Units now have " +
                         "[scarlet]" + percent + "%[accent] more health " +
                         "for a total multiplier of [scarlet]" + df.format(multiplier) + "x");
+                if (!justWon) {
+                    Groups.player.each((player) -> {
+                        if (player.team() != Team.malis) {
+                            CustomPlayer cPly = base.uuidMapping.get(player.uuid());
+                            int addXP = Math.min((int) (100.0 * multiplier), 2500);
+                            cPly.addXP(addXP, "[accent]+[scarlet]" + addXP + "xp[] for surviving!");
+                        }
+                    });
+                }
             }
 
-            if (oneMinInterval.get(base.seconds)) {
-                Groups.player.each((player) -> {
-                    CustomPlayer cPly = base.uuidMapping.get(player.uuid());
-                    if (cPly.hudEnabled)
-                        showHud(player);
-                });
-            }
             // runs 20 times a second, 1 mono = 20/s. caps at 255 monos = 5100/s
             if (Core.graphics.getFrameId() % 4 == 0) {
                 for (PlagueTeam team : teams.values()) {
@@ -421,7 +429,17 @@ public class PlagueMain extends Plugin {
                 if (event.tile.team().cores().size == 1) {
                     Team deadTeam = event.tile.team();
                     Seq<CustomPlayer> winners = new Seq<>();
-                    Log.info("Dead team to infect: " + deadTeam);
+                    Log.info("Infecting " + deadTeam);
+                    killTiles(deadTeam);
+                    if (!pregame) {
+                        Groups.player.each((player) -> {
+                            if (player.team() == Team.malis) {
+                                var cPly = Base.uuidMapping.get(player.uuid());
+                                cPly.addXP(400, "[accent]+[scarlet]400xp[] for infecting survivors"
+                                        + (!hasWon ? " [gold] before the win time!" : "!"));
+                            }
+                        });
+                    }
                     if (!teams.containsKey(deadTeam)) {
                         Call.sendMessage(
                                 "Welp that's not supposed to happen... Let [purple]me[white] know what just happened and what caused this"
@@ -435,9 +453,6 @@ public class PlagueMain extends Plugin {
                         }
                         infect(cPly, false);
                     }
-
-                    killTiles(deadTeam);
-
                     teams.remove(deadTeam);
                     if (teams.size() == 1) {
                         Log.info("Dead block endgame");
@@ -614,6 +629,7 @@ public class PlagueMain extends Plugin {
 
         handler.register("gameover", "[map(index)]", "End the plague game", args -> {
             Call.sendMessage("[scarlet]server[accent] has ended the plague game. Ending in 10 seconds...");
+            Log.info("game ended.");
             endgame(new Seq<>(), args);
         });
     }
@@ -639,12 +655,16 @@ public class PlagueMain extends Plugin {
         });
 
         handler.<Player>register("destroy", "Destroy a building", (args, player) -> {
+            if (player.team() == Team.malis && !player.admin) {
+                player.sendMessage("[scarlet]infected cannot use /destroy");
+                return;
+            }
             destroyers.add(player);
             player.sendMessage("[accent]Tap the block you want to destroy.");
         });
 
-        handler.<Player>register("multiplier", "The current damage & health multiplier", (_args, player) -> {
-            player.sendMessage(String.format("[scarlet]%.1fx [accent]health and damage", multiplier));
+        handler.<Player>register("multiplier", "The current health multiplier", (_args, player) -> {
+            player.sendMessage(String.format("[scarlet]%.1fx [accent]health", multiplier));
         });
 
         handler.<Player>register("monocount", "The current number of monos your team owns", (_args, player) -> {
@@ -1126,7 +1146,6 @@ public class PlagueMain extends Plugin {
         CustomPlayer cPly = base.uuidMapping.get(player.uuid());
         cPly.player = player;
         cPly.team = cPly.player.team();
-        cPly.rawName = player.name;
 
         try {
             if (!teams.get(cPly.team).hasPlayer(cPly)) {
@@ -1147,9 +1166,6 @@ public class PlagueMain extends Plugin {
 
         if (cPly.playTime < 60)
             Call.infoMessage(player.con, info);
-
-        if (cPly.hudEnabled)
-            showHud(player);
 
         // Spawn their starter units
 
@@ -1202,13 +1218,6 @@ public class PlagueMain extends Plugin {
         cPly.updateName();
     }
 
-    void showHud(Player ply) {
-        String s = "[accent]Time survived: [orange]" + Base.formatTime(base.seconds) + "[accent].\n" +
-                "All-time record: [gold]" + Base.formatTime(mapRecord) + "[accent].\n";
-        s += "\n\n[accent]Disable hud with [scarlet]/hud";
-        Call.infoPopup(ply.con, s, 55f, 10, 120, 0, 140, 0);
-    }
-
     void endgame() {
         endgame(new Seq<>(), new String[] {});
     }
@@ -1232,6 +1241,11 @@ public class PlagueMain extends Plugin {
             Call.infoMessage(cPly.player.con, "[green]You survived the longest\n" +
                     (newRecord ? "    [gold]New record!\n" : "") +
                     "[accent]Survive time: " + Base.formatTime(timeNow) + ".");
+            int addXP = Math.min((int) (200.0 * multiplier), 20000);
+            cPly.addXP(addXP, "[accent]+[scarlet]" + addXP + "xp[] for surviving the longest!");
+            if (newRecord) {
+                cPly.addXP(30000, "[accent]+[scarlet]30k xp[] for setting a new record!");
+            }
         }
 
         for (CustomPlayer cPly : teams.get(Team.malis).players) {
@@ -1294,7 +1308,6 @@ public class PlagueMain extends Plugin {
 
         corePlaceInterval.reset();
         tenMinInterval.reset();
-        oneMinInterval.reset();
 
         // Load new map:
         loadMap(args);
