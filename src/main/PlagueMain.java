@@ -2,7 +2,6 @@ package main;
 
 import arc.*;
 import arc.graphics.Color;
-import mindustry.type.Weapon;
 import mindustry.world.*;
 import arc.math.geom.*;
 import arc.math.Mathf;
@@ -29,7 +28,6 @@ import mindustry.world.blocks.defense.turrets.PowerTurret;
 import mindustry.world.blocks.defense.turrets.Turret.TurretBuild;
 import mindustry.world.blocks.storage.CoreBlock;
 import mindustry.world.blocks.storage.CoreBlock.CoreBuild;
-import mindustry.world.blocks.units.Reconstructor;
 import base.DBInterface;
 import base.CustomPlayer;
 
@@ -65,12 +63,7 @@ public class PlagueMain extends Plugin {
 
     private Rules rules;
 
-    private Seq<Weapon> quadWeapon;
-
     private final HashMap<UnitType, Float> originalUnitHealth = new HashMap<>();
-
-    private Seq<UnitType[]> additiveFlare;
-    private Seq<UnitType[]> additiveNoFlare;
 
     private HashMap<Team, PlagueTeam> teams;
 
@@ -288,17 +281,6 @@ public class PlagueMain extends Plugin {
                     updatePlayer(player);
 
                 });
-
-                Call.sendMessage("[scarlet]The plague can now build and attack with air units!");
-                // BUFF DA PLAGUE (enable air)
-
-                // So survivor megas can't do damage
-                UnitTypes.poly.weapons = new Seq<>();
-                UnitTypes.mega.weapons = new Seq<>();
-                UnitTypes.quad.weapons = quadWeapon;
-
-                ((Reconstructor) Blocks.additiveReconstructor).upgrades = additiveFlare;
-
             }
 
             if (!gameover && !newRecord && base.seconds > mapRecord) {
@@ -595,7 +577,8 @@ public class PlagueMain extends Plugin {
                         5f, event.spawner.tileX() * 8, event.spawner.tileY() * 8);
             } else if (event.unit.type == UnitTypes.mono) {
                 PlagueTeam team = teams.get(event.unit.team);
-                if (team == null) return;
+                if (team == null)
+                    return;
                 if (team.monos == MONO_LIMIT && !team.reached_cap) {
                     team.reached_cap = true;
                     team.players.forEach((p) -> {
@@ -1082,15 +1065,8 @@ public class PlagueMain extends Plugin {
         UnitTypes.alpha.weapons = new Seq<>();
         UnitTypes.beta.weapons = new Seq<>();
         UnitTypes.gamma.weapons = new Seq<>();
-
-        /*
-         * UnitTypes.alpha.health = 1f;
-         * UnitTypes.beta.health = 1f;
-         * UnitTypes.gamma.health = 1f;
-         */
-
-        quadWeapon = UnitTypes.quad.weapons.copy();
-
+        UnitTypes.poly.weapons = new Seq<>();
+        UnitTypes.mega.weapons = new Seq<>();
         UnitTypes.flare.weapons = new Seq<>();
 
         for (UnitType u : Vars.content.units()) {
@@ -1107,11 +1083,6 @@ public class PlagueMain extends Plugin {
             originalUnitHealth.put(u, u.health);
         }
 
-        additiveFlare = ((Reconstructor) Blocks.additiveReconstructor).upgrades.copy();
-        ((Reconstructor) Blocks.additiveReconstructor).upgrades.remove(3);
-
-        additiveNoFlare = ((Reconstructor) Blocks.additiveReconstructor).upgrades.copy();
-
         ((ItemTurret) Blocks.foreshadow).ammoTypes.get(Items.surgeAlloy).buildingDamageMultiplier = 0;
         ((PowerTurret) Blocks.malign).shootType.buildingDamageMultiplier = 0;
 
@@ -1125,8 +1096,6 @@ public class PlagueMain extends Plugin {
         UnitTypes.poly.weapons = new Seq<>();
         UnitTypes.mega.weapons = new Seq<>();
         UnitTypes.quad.weapons = new Seq<>();
-
-        ((Reconstructor) Blocks.additiveReconstructor).upgrades = additiveNoFlare;
 
         for (UnitType u : Vars.content.units()) {
             if (u != UnitTypes.alpha && u != UnitTypes.beta && u != UnitTypes.gamma) {
