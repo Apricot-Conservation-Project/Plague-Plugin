@@ -1383,8 +1383,6 @@ public class PlagueMain extends Plugin {
                 t.build.health = Float.MAX_VALUE;
         });
         world.beginMapLoad();
-        PlagueGenerator.defaultOres(world.tiles, isSerpulo);
-
         world.endMapLoad();
         rules.hiddenBuildItems = (isSerpulo ? Items.erekirOnlyItems : PlagueData.serpuloOnlyItems).asSet();
         rules.bannedBlocks = map.rules().bannedBlocks;

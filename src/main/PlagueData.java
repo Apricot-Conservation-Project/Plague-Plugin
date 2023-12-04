@@ -3,7 +3,6 @@ package main;
 import arc.math.Mathf;
 import arc.struct.*;
 import mindustry.content.*;
-import mindustry.maps.filters.*;
 import mindustry.type.*;
 import mindustry.world.Block;
 
@@ -71,97 +70,6 @@ public class PlagueData {
     static {
         plagueBannedPreWin = ObjectSet.with(plagueBanned.toSeq());
         plagueBannedPreWin.addAll(Blocks.shipFabricator, Blocks.shipRefabricator, Blocks.shipAssembler);
-    }
-
-    public static final ObjectSet<GenerateFilter> erekirFilters;
-    static {
-        final int[] seedOffset = { (int) System.currentTimeMillis() };
-        OreFilter berylliumFloorFilter = new OreFilter() {
-            {
-                ore = Blocks.oreBeryllium;
-                seed = seedOffset[0]++;
-                threshold = 0.81f;
-            }
-        };
-
-        OreFilter berylliumWallFilter = new OreFilter() {
-            {
-                ore = Blocks.wallOreBeryllium;
-                seed = seedOffset[0]++;
-                threshold = 0.77f;
-                scl = 24.95f;
-                octaves = 1f;
-                falloff = 1f;
-                tilt = 0.24f;
-            }
-        };
-
-        OreFilter tungstenFloorFilter = new OreFilter() {
-            {
-                ore = Blocks.oreTungsten;
-                seed = seedOffset[0]++;
-            }
-        };
-        OreFilter tungstenWallFilter = new OreFilter() {
-            {
-                ore = Blocks.wallOreTungsten;
-                seed = seedOffset[0]++;
-                threshold -= 0.1;
-            }
-        };
-
-        OreFilter thoriumFloorFilter = new OreFilter() {
-            {
-                ore = Blocks.oreCrystalThorium;
-                seed = seedOffset[0]++;
-            }
-        };
-        OreFilter thoriumWallFilter = new OreFilter() {
-            {
-                ore = Blocks.wallOreThorium;
-                seed = seedOffset[0]++;
-                threshold -= 0.1;
-            }
-        };
-
-        OreFilter graphiteWallFilter = new OreFilter() {
-            {
-                ore = Blocks.graphiticWall;
-                seed = seedOffset[0]++;
-                threshold -= 0.2;
-            }
-        };
-
-        OreFilter slagOreFilter = new OreFilter() {
-            {
-                ore = Blocks.slag;
-                seed = seedOffset[0]++;
-                threshold += 0.06;
-            }
-        };
-
-        OreFilter arkyciteOreFilter = new OreFilter() {
-            {
-                ore = Blocks.arkyciteFloor;
-                seed = seedOffset[0]++;
-                threshold += 0.06;
-            }
-        };
-
-        ScatterFilter ventFilter = new ScatterFilter() {
-            {
-                floor = Blocks.carbonVent;
-                chance = 0.0015f;
-            }
-        };
-
-        erekirFilters = ObjectSet.with(
-                berylliumFloorFilter, berylliumWallFilter,
-                tungstenFloorFilter, tungstenWallFilter,
-                thoriumFloorFilter, thoriumWallFilter,
-                graphiteWallFilter,
-                slagOreFilter, arkyciteOreFilter,
-                ventFilter);
     }
 
     public static int getRandomWithExclusion(int start, int end, int... exclude) {
