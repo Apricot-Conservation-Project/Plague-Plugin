@@ -115,8 +115,7 @@ public class PlagueMain extends Plugin {
             "The [green]Survivors[accent] build up a huge defense and last 60 minutes to win.\n\n" +
             "To become a " +
             "[green]Survivor[accent], you must place a core in the first 2 minutes of the game, where you are " +
-            "allowed to choose your team. Place any block to place a core at the start of the game.\n\n" +
-            "Air units do no damage before 45 minutes\n\n" + mono_info;
+            "allowed to choose your team. Place any block to place a core at the start of the game.\n\n" + mono_info;
 
     @Override
     public void init() {
