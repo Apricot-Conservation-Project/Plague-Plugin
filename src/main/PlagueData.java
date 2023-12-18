@@ -11,16 +11,21 @@ public class PlagueData {
             UnitTypes.oct);
 
     public static final Seq<ItemStack> survivorLoadoutSerpulo = ItemStack.list(Items.copper, 3600, Items.lead, 3600,
-            Items.graphite, 500, Items.titanium, 900, Items.silicon, 500, Items.metaglass, 200);
+            Items.graphite, 500, Items.titanium, 900, Items.silicon, 500, Items.metaglass, 300);
 
     public static final Seq<ItemStack> survivorIncrementSerpulo = ItemStack.list(Items.copper, 500, Items.lead, 500);
-
+    public static final Seq<ItemStack> survivorIncrementMixtech = ItemStack.list(Items.copper, 500, Items.lead, 500,
+            Items.beryllium, 500, Items.graphite, 500);
     public static final Seq<ItemStack> survivorIncrementErekir = ItemStack.list(Items.beryllium, 500, Items.graphite,
             500);
 
-    public static final Seq<ItemStack> survivorLoadoutErekir = ItemStack.list(Items.beryllium, 1000, Items.graphite,
+    public static final Seq<ItemStack> survivorLoadoutErekir = ItemStack.list(Items.beryllium, 2000, Items.graphite,
             1000,
             Items.tungsten, 500, Items.thorium, 500, Items.silicon, 900);
+
+    public static final Seq<ItemStack> survivorLoadoutMixtech = ItemStack.list(Items.beryllium, 2000, Items.graphite,
+            1000, Items.metaglass, 500, Items.graphite, 600, Items.titanium, 1000,
+            Items.tungsten, 500, Items.thorium, 500, Items.silicon, 900, Items.copper, 1500, Items.lead, 1500);
 
     public static final Seq<Item> serpuloOnlyItems = Seq.with(Items.copper, Items.lead, Items.metaglass,
             Items.blastCompound, Items.sporePod,
@@ -61,15 +66,8 @@ public class PlagueData {
                 Blocks.surgeWall, Blocks.surgeWallLarge, Blocks.thoriumWall, Blocks.thoriumWallLarge, Blocks.phaseWall,
                 Blocks.phaseWallLarge, Blocks.titaniumWall, Blocks.titaniumWallLarge, Blocks.copperWallLarge,
                 Blocks.copperWall, Blocks.door, Blocks.doorLarge, Blocks.plastaniumWall, Blocks.plastaniumWallLarge,
-                Blocks.logicDisplay, Blocks.largeLogicDisplay, Blocks.canvas,
-                Blocks.turbineCondenser, Blocks.chemicalCombustionChamber, Blocks.fluxReactor,
+                Blocks.canvas, Blocks.turbineCondenser, Blocks.chemicalCombustionChamber, Blocks.fluxReactor,
                 Blocks.neoplasiaReactor); // Blocks.microProcessor, Blocks.logicProcessor, Blocks.hyperProcessor);
-    }
-
-    public static final ObjectSet<Block> plagueBannedPreWin;
-    static {
-        plagueBannedPreWin = ObjectSet.with(plagueBanned.toSeq());
-        plagueBannedPreWin.addAll(Blocks.shipFabricator, Blocks.shipRefabricator, Blocks.shipAssembler);
     }
 
     public static int getRandomWithExclusion(int start, int end, int... exclude) {

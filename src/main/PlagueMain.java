@@ -12,6 +12,7 @@ import arc.util.Time;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.content.Items;
+import mindustry.content.Planets;
 import mindustry.content.UnitTypes;
 import mindustry.core.GameState;
 import mindustry.core.GameState.State;
@@ -21,7 +22,9 @@ import mindustry.game.Team;
 import mindustry.game.Teams;
 import mindustry.gen.*;
 import mindustry.mod.Plugin;
+import mindustry.type.Item;
 import mindustry.type.ItemStack;
+import mindustry.type.Planet;
 import mindustry.type.UnitType;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.blocks.defense.turrets.PowerTurret;
@@ -97,7 +100,7 @@ public class PlagueMain extends Plugin {
                 "All-time record: [gold]" + Base.formatTime(mapRecord) + "[accent].\n\nDisable hud with [scarlet]/hud";
     });
 
-    private boolean isSerpulo = true;
+    private Planet planet = Planets.serpulo;
 
     private boolean pregame;
     private boolean gameover;
@@ -188,8 +191,7 @@ public class PlagueMain extends Plugin {
 
             // plague cant build banned blocks
             if (action.player.team() == Team.malis) {
-                if (hasWon ? PlagueData.plagueBanned.contains(action.block)
-                        : PlagueData.plagueBannedPreWin.contains(action.block))
+                if (PlagueData.plagueBanned.contains(action.block))
                     return false;
                 return true; // rest does not concern plague
             }
@@ -341,7 +343,8 @@ public class PlagueMain extends Plugin {
             event.tile.removeNet();
 
             // check if it fits
-            if (!canPlace(isSerpulo ? Blocks.spectre : Blocks.malign, event.tile))
+            if (!canPlace(planet == Planets.serpulo || planet == Planets.sun ? Blocks.spectre : Blocks.malign,
+                    event.tile))
                 return;
 
             Team chosenTeam = null;
@@ -389,17 +392,21 @@ public class PlagueMain extends Plugin {
             base.uuidMapping.get(player.uuid()).team = chosenTeam;
             updatePlayer(player);
 
-            event.tile.setNet(isSerpulo ? Blocks.coreFoundation : Blocks.coreCitadel, chosenTeam, 0);
+            event.tile.setNet(planet != Planets.erekir ? Blocks.coreFoundation : Blocks.coreCitadel, chosenTeam, 0);
             state.teams.registerCore((CoreBlock.CoreBuild) event.tile.build);
             // if just joining the team, only add a little copper+lead.
             // or beryllium+graphite if erekir.
+            // or both if mixtec
             if (state.teams.cores(chosenTeam).size != 1) {
-                event.tile.build.items
-                        .add(isSerpulo ? PlagueData.survivorIncrementSerpulo : PlagueData.survivorIncrementErekir);
+                event.tile.build.items.add(planet == Planets.erekir ? PlagueData.survivorIncrementErekir
+                        : (planet == Planets.serpulo ? PlagueData.survivorIncrementSerpulo
+                                : PlagueData.survivorIncrementMixtech));
                 return;
             }
 
-            for (ItemStack stack : isSerpulo ? PlagueData.survivorLoadoutSerpulo : PlagueData.survivorLoadoutErekir) {
+            for (ItemStack stack : planet == Planets.erekir ? PlagueData.survivorLoadoutErekir
+                    : (planet == Planets.serpulo ? PlagueData.survivorLoadoutSerpulo
+                            : PlagueData.survivorLoadoutMixtech)) {
                 Call.setItem(event.tile.build, stack.item, stack.amount);
             }
         });
@@ -514,7 +521,7 @@ public class PlagueMain extends Plugin {
                 // plague team
                 t == Team.malis
                 // it isnt a vault
-                || event.tile.block() != (isSerpulo ? Blocks.vault : Blocks.reinforcedVault)
+                || event.tile.block() != (planet != Planets.erekir ? Blocks.vault : Blocks.reinforcedVault)
                 // player is tapping other teams vault
                 || event.player.team() != t
             ) return;
@@ -1082,8 +1089,14 @@ public class PlagueMain extends Plugin {
             originalUnitHealth.put(u, u.health);
         }
 
+        ((CoreBlock) Blocks.coreBastion).incinerateNonBuildable = false;
+        ((CoreBlock) Blocks.coreCitadel).incinerateNonBuildable = false;
+        ((CoreBlock) Blocks.coreAcropolis).incinerateNonBuildable = false;
         ((ItemTurret) Blocks.foreshadow).ammoTypes.get(Items.surgeAlloy).buildingDamageMultiplier = 0;
         ((PowerTurret) Blocks.malign).shootType.buildingDamageMultiplier = 0;
+        ((PowerTurret) Blocks.malign).shootType.fragBullet.buildingDamageMultiplier = 0;
+        ((PowerTurret) Blocks.afflict).shootType.buildingDamageMultiplier = 0;
+        ((PowerTurret) Blocks.afflict).shootType.fragBullet.buildingDamageMultiplier = 0;
 
         for (int i = 0; i < maps.customMaps().size; i++) {
             rotation.add(i);
@@ -1237,7 +1250,7 @@ public class PlagueMain extends Plugin {
 
     private void updatePlayer(Player ply) {
         if (ply.team() == Team.malis) {
-            updateBanned(ply, hasWon ? PlagueData.plagueBanned : PlagueData.plagueBannedPreWin);
+            updateBanned(ply, PlagueData.plagueBanned);
         } else if (ply.team() != Team.blue) {
             updateBanned(ply, PlagueData.survivorBanned);
         }
@@ -1375,14 +1388,15 @@ public class PlagueMain extends Plugin {
             coreBuild.health(Float.MAX_VALUE);
             coreBuild.items.clear();
         });
-        isSerpulo = PlagueData.serpuloCores.contains(Team.malis.cores().get(0).block);
+        planet = map.rules().planet;
         world.tiles.forEach(t -> {
             if (t.build != null && t.build.block.equals(Blocks.powerSource) && t.build.team() == Team.malis)
                 t.build.health = Float.MAX_VALUE;
         });
         world.beginMapLoad();
         world.endMapLoad();
-        rules.hiddenBuildItems = (isSerpulo ? Items.erekirOnlyItems : PlagueData.serpuloOnlyItems).asSet();
+        rules.hiddenBuildItems = (planet == Planets.erekir ? PlagueData.serpuloOnlyItems
+                : (planet == Planets.serpulo ? Items.erekirOnlyItems : new Seq<Item>())).asSet();
         rules.bannedBlocks = map.rules().bannedBlocks;
         rules.bannedUnits = map.rules().bannedUnits;
         rules.unitWhitelist = map.rules().unitWhitelist;
