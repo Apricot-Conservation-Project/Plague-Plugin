@@ -1,3 +1,4 @@
+
 apply plugin: "java"
 
 version '4.10'
@@ -19,7 +20,7 @@ ext{
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
-    implementation "com.github.Apricot-Conservation-Project:base:54ffb5c"
+    implementation "com.github.Apricot-Conservation-Project:base:8708244"
 }
 
 jar{

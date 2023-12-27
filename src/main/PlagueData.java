@@ -42,7 +42,7 @@ public class PlagueData {
             Blocks.shipAssembler, Blocks.mechAssembler, Blocks.tankAssembler, Blocks.tankFabricator,
             Blocks.shipFabricator,
             Blocks.mechFabricator, Blocks.tankRefabricator, Blocks.mechRefabricator, Blocks.shipRefabricator,
-            Blocks.primeRefabricator, Blocks.scathe);
+            Blocks.primeRefabricator);
 
     public static final ObjectSet<Block> turrets = ObjectSet.with(Blocks.duo, Blocks.scatter, Blocks.scorch,
             Blocks.lancer, Blocks.arc,
