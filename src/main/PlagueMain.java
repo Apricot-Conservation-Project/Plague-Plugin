@@ -182,7 +182,7 @@ public class PlagueMain extends Plugin {
             if (action.player == null || action.tile == null)
                 return true;
 
-            // mustnt touch power source
+            // mustnt touch power source (this also handles payload for us, nice!)
             if (action.tile.block() == Blocks.powerSource)
                 return false;
 
@@ -1083,10 +1083,8 @@ public class PlagueMain extends Plugin {
         UnitTypes.mega.weapons = new Seq<>();
         UnitTypes.flare.weapons = new Seq<>();
 
-        for (UnitType u : Vars.content.units()) {
+        for (UnitType u : Vars.content.units())
             u.crashDamageMultiplier = 0f;
-            u.payloadCapacity = 0f;
-        }
 
         rules.unitCapVariable = false;
         rules.unitCap = 48;
