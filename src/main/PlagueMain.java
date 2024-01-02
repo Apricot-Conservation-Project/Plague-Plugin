@@ -571,6 +571,14 @@ public class PlagueMain extends Plugin {
         });
         // monos must die
         Events.on(EventType.UnitCreateEvent.class, event -> {
+            if (event.unit.type == UnitTypes.collaris) {
+                if (Base.seconds < (30 * 60)) {
+                    // if a surv sees this, lol.
+                    Call.label(
+                            "⚠ [accent]Infected can't build collaris before 30 minutes!",
+                            5f, event.spawner.tileX() * 8, event.spawner.tileY() * 8);
+                }
+            } else
             // im pretty sure this actually never happens;
             // there seems to be a upgrade thing, that doesnt let horizons get out at all.
             // ill keep it just in case though, what harm could it cause?
