@@ -8,6 +8,7 @@ import arc.math.Mathf;
 import arc.struct.*;
 import arc.util.CommandHandler;
 import arc.util.Log;
+import arc.util.Strings;
 import arc.util.Time;
 import mindustry.Vars;
 import mindustry.content.Blocks;
@@ -654,6 +655,14 @@ public class PlagueMain extends Plugin {
             Log.info("game ended.");
             endgame(new Seq<>(), args);
         });
+
+        handler.register("lb", "<inf/sur>", "Leaderboard", arg -> {
+            if (arg[0].equals("inf")) {
+                Log.info(Strings.stripColors(plagueLb));
+            } else {
+                Log.info(Strings.stripColors(survLb));
+            }
+        });
     }
 
     public float snap(float f, float step) {
@@ -685,8 +694,15 @@ public class PlagueMain extends Plugin {
             player.sendMessage("[accent]Tap the block you want to destroy.");
         });
 
-        handler.<Player>register("lb", "Show the leaderboard", (_args, player) -> {
-            if (player.team() == Team.malis)
+        handler.<Player>register("lb", "[team]", "Show the leaderboard", (arg, player) -> {
+            if (arg.length == 1) {
+                if (arg[0].equals("inf")) {
+                    player.sendMessage(plagueLb);
+                } else {
+                    player.sendMessage(survLb);
+
+                }
+            } else if (player.team() == Team.malis)
                 player.sendMessage(plagueLb);
             else
                 player.sendMessage(survLb);
