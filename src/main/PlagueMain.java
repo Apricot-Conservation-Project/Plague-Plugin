@@ -1243,7 +1243,7 @@ public class PlagueMain extends Plugin {
 
     private void spawnPlayerUnits(CustomPlayer cPly, Player ply) {
         for (Unit u : cPly.followers) {
-            u.kill();
+            u.dead = true;
             u.health = 0;
         }
         cPly.followers.clear();
