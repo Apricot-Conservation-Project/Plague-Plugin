@@ -572,11 +572,12 @@ public class PlagueMain extends Plugin {
         });
         // monos must die
         Events.on(EventType.UnitCreateEvent.class, event -> {
-            if (event.unit.type == UnitTypes.collaris) {
+            if (event.unit.type == UnitTypes.collaris || event.unit.type == UnitTypes.disrupt) {
                 if (Base.seconds < (30 * 60)) {
                     // if a surv sees this, lol.
                     Call.label(
-                            "⚠ [accent]Infected can't build collaris before 30 minutes!",
+                            String.format("⚠ [accent]Infected can't build %s before 30 minutes!",
+                                    event.unit.type.toString()),
                             5f, event.spawner.tileX() * 8, event.spawner.tileY() * 8);
                 }
             } else
@@ -587,7 +588,7 @@ public class PlagueMain extends Plugin {
                     && event.unit.team != Team.malis) {
                 // let players know they can't build this unit
                 Call.label(
-                        String.format("Survivors can't build %s!",
+                        String.format("⚠ [accent]Survivors can't build %s!",
                                 (event.unit.type == UnitTypes.horizon ? "horizon" : "zenith")),
                         5f, event.spawner.tileX() * 8, event.spawner.tileY() * 8);
             } else if (event.unit.type == UnitTypes.mono) {

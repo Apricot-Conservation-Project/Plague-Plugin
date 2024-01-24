@@ -11,7 +11,7 @@ public class PlagueData {
             UnitTypes.oct);
 
     public static final Seq<ItemStack> survivorLoadoutSerpulo = ItemStack.list(Items.copper, 3600, Items.lead, 3600,
-            Items.graphite, 500, Items.titanium, 900, Items.silicon, 500, Items.metaglass, 300);
+            Items.graphite, 600, Items.titanium, 800, Items.silicon, 500, Items.metaglass, 600);
 
     public static final Seq<ItemStack> survivorIncrementSerpulo = ItemStack.list(Items.copper, 500, Items.lead, 500);
     public static final Seq<ItemStack> survivorIncrementMixtech = ItemStack.list(Items.copper, 500, Items.lead, 500,
